@@ -52,7 +52,8 @@
 #include <ompl/geometric/planners/kpiece/BKPIECE1.h>
 #include <ompl/geometric/planners/kpiece/LBKPIECE1.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
-#include <ompl/geometric/planners/rrt/RRTstar.h>
+#include <ompl/geometric/planners/rrt/RRTstarTEST.h>
+#include <ompl/geometric/planners/rrt/eGraphPlanner.h>
 #include <ompl/geometric/planners/prm/PRM.h>
 #include <ompl/geometric/planners/prm/PRMstar.h>
 
@@ -153,6 +154,8 @@ void ompl_interface::PlanningContextManager::registerDefaultPlanners()
   registerPlannerAllocator("geometric::BKPIECE", boost::bind(&allocatePlanner<og::BKPIECE1>, _1, _2, _3));
   registerPlannerAllocator("geometric::LBKPIECE", boost::bind(&allocatePlanner<og::LBKPIECE1>, _1, _2, _3));
   registerPlannerAllocator("geometric::RRTstar", boost::bind(&allocatePlanner<og::RRTstar>, _1, _2, _3));
+  registerPlannerAllocator("geometric::RRTstarTEST", boost::bind(&allocatePlanner<og::RRTstarTEST>, _1, _2, _3));
+  registerPlannerAllocator("geometric::eGraphPlanner", boost::bind(&allocatePlanner<og::eGraphPlanner>, _1, _2, _3));
   registerPlannerAllocator("geometric::PRM", boost::bind(&allocatePlanner<og::PRM>, _1, _2, _3));
   registerPlannerAllocator("geometric::PRMstar", boost::bind(&allocatePlanner<og::PRMstar>, _1, _2, _3));
 }
