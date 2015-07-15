@@ -9,6 +9,7 @@ find_package(Boost REQUIRED system filesystem date_time thread serialization)
 find_package(catkin REQUIRED COMPONENTS
   moveit_core 
   moveit_ros_planning
+  moveit_ros_planning_interface
   roscpp
   rosconsole
   pluginlib
@@ -30,6 +31,7 @@ catkin_package(
     ${OMPL_INCLUDE_DIRS}
   CATKIN_DEPENDS
     moveit_core
+    moveit_ros_planning_interface
 )
 
 include_directories(SYSTEM
