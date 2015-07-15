@@ -54,6 +54,7 @@
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/geometric/planners/rrt/RRTstarTEST.h>
 #include <ompl/geometric/planners/rrt/eGraphPlanner.h>
+#include <moveit/ompl_interface/MoveitEGraphInterface.h>
 #include <ompl/geometric/planners/prm/PRM.h>
 #include <ompl/geometric/planners/prm/PRMstar.h>
 
