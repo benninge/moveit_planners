@@ -11,14 +11,14 @@ ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface() :
         nh_("~") {
 
     //init Storage
-    storage_egraph_ = new moveit_warehouse::EGraphStorage();
-    storage_Trajs_ = new moveit_warehouse::EGraphTrajStorage();
+    storage_Trajs_ = new ompl_interface::EGraphTrajStorage();
+    pc_ = ompl_interface_->getLastPlanningContext();
 
-    pub_valid_states_ = nh_.advertise<moveit_msgs::DisplayRobotState>(
-            "ompl_planner_valid_states", 5);
-    pub_valid_traj_ = nh_.advertise<moveit_msgs::DisplayTrajectory>(
-            "ompl_planner_valid_trajectories", 5);
-
+    if (!pc_ || !pc_->getPlanningScene()) {
+            ROS_ERROR(
+                    "MoveitEGraphInterface: No planning context to sample states for");
+            return;
+        }
 }
 
 ompl_interface::MoveitEGraphInterface::~MoveitEGraphInterface() {
@@ -29,50 +29,97 @@ void ompl_interface::MoveitEGraphInterface::save(
         std::vector<ompl::geometric::eGraphPlanner::EGraphNode*> eGraph,
         const ompl::base::SpaceInformationPtr &si) {
 
+    //traverse egraph and search for goals
     for (size_t i = 0; i < eGraph.size(); i++) {
-        //si->getStateSpace()->serialize();
+        //check if goal
+        if (eGraph[i]->children.empty() == true) {
+            ompl::geometric::eGraphPlanner::EGraphNode *current_node = eGraph[i];
+            std::vector<ompl::geometric::eGraphPlanner::EGraphNode*> node_traj;
+            while (current_node != NULL) {
+                        node_traj.push_back(current_node);
+                        current_node = current_node->parent;
+                    }
+            if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
+                addTrajToEGraph(omplNodesToDisplayTraj(node_traj), "graph", "robot");
+            } else {
+                addGraphToStorage(omplNodesToDisplayTraj(node_traj), "graph", "graph");
+            }
+        }
     }
-
 }
 
-void ompl_interface::MoveitEGraphInterface::load() {
-
+void ompl_interface::MoveitEGraphInterface::load(
+        std::vector<ompl::geometric::eGraphPlanner::EGraphNode*>& eGraph,
+        const ompl::base::SpaceInformationPtr &si) {
+    moveit_msgs::DisplayTrajectory traj = getGraphFromStorage("graph", "robot");
+    displayTrajToOmplNodes(traj, eGraph, si);
 }
 
-void ompl_interface::MoveitEGraphInterface::copyToDisplayTraj(
-        moveit_msgs::DisplayTrajectory& traj_msg,
-        std::vector<ompl::base::State*> states) {
-    ompl_interface::ModelBasedPlanningContextPtr pc =
-            ompl_interface_->getLastPlanningContext();
-    if (!pc || !pc->getPlanningScene()) {
-        ROS_ERROR(
-                "MoveitEGraphInterface: No planning context to sample states for");
-        return;
-    }
-
-    robot_state::RobotState rstate(pc->getRobotModel());
-    robot_trajectory::RobotTrajectory traj(pc->getRobotModel(), pc->getJointModelGroup());
-    for (size_t i = 0; i < states.size(); i++) {
-        pc->getOMPLStateSpace()->copyToRobotState(rstate, states[i]);
+moveit_msgs::DisplayTrajectory ompl_interface::MoveitEGraphInterface::omplNodesToDisplayTraj(
+        std::vector<ompl::geometric::eGraphPlanner::EGraphNode*> nodes) {
+    moveit_msgs::DisplayTrajectory traj_msg;
+    robot_state::RobotState rstate(pc_->getRobotModel());
+    robot_trajectory::RobotTrajectory traj(pc_->getRobotModel(),
+            pc_->getJointModelGroup());
+    for (size_t i = 0; i < nodes.size(); i++) {
+        pc_->getOMPLStateSpace()->copyToRobotState(rstate, nodes[i]->state);
         traj.addSuffixWayPoint(rstate, 0.0);
     }
     //rstate.getJointStateGroup(pc->getJointModelGroupName())->updateLinkTransforms();
 
     moveit_msgs::DisplayRobotState state_msg;
     moveit::core::robotStateToRobotStateMsg(rstate, state_msg.state);
-    //pub_valid_states_.publish(state_msg);
 
-    traj_msg.model_id = pc->getRobotModel()->getName();
+    traj_msg.model_id = pc_->getRobotModel()->getName();
     traj_msg.trajectory.resize(1);
     traj.getRobotTrajectoryMsg(traj_msg.trajectory[0]);
     moveit::core::robotStateToRobotStateMsg(traj.getFirstWayPoint(),
             traj_msg.trajectory_start);
-    //pub_valid_traj_.publish(traj_msg);
-    if (storage_Trajs_->hasEGraphTraj("debugTrajs", "robot_name") == false) {
-        addTrajToEGraph(traj_msg, "debugTrajs", "robot_name");
-    } else {
-        addGraphToStorage(traj_msg, "debugTrajs", "robot_name");
+    return traj_msg;
+}
+
+void ompl_interface::MoveitEGraphInterface::displayTrajToOmplNodes(
+        moveit_msgs::DisplayTrajectory traj_msg,
+        std::vector<ompl::geometric::eGraphPlanner::EGraphNode*>& nodes,
+        const ompl::base::SpaceInformationPtr &si) {
+    robot_state::RobotState rstate(pc_->getRobotModel());
+    std::vector<double> v;
+
+    //traverse trajs
+    for (size_t i = 0; i < traj_msg.trajectory.size(); i++) {
+        //traverse points on traj
+        for (size_t j = 0;
+                j < traj_msg.trajectory[i].joint_trajectory.points.size();
+                j++) {
+            v = traj_msg.trajectory[i].joint_trajectory.points[j].positions;
+            //traverse joints on point of traj
+            for (size_t k = 0;
+                    k
+                            < traj_msg.trajectory[i].joint_trajectory.joint_names.size();
+                    k++) {
+                rstate.setJointPositions(
+                        traj_msg.trajectory[i].joint_trajectory.joint_names[k],
+                        &v[k]);
+            }
+            ompl::geometric::eGraphPlanner::EGraphNode *node =
+                    new ompl::geometric::eGraphPlanner::EGraphNode(si);
+            pc_->getOMPLStateSpace()->copyToOMPLState(node->state, rstate);
+            ompl::geometric::eGraphPlanner::EGraphNode *old_node;
+
+            //reconstruct parents and neighbors
+            if (j == 0) {
+                //start of traj, do nothing
+            } else {
+                //node->neighbors.push_back(old_node);
+                old_node->children.push_back(node);
+                node->parent = old_node;
+            }
+
+            old_node = node;
+            nodes.push_back(node);
+        }
     }
+
 }
 
 bool ompl_interface::MoveitEGraphInterface::addGraphToStorage(
@@ -91,7 +138,7 @@ bool ompl_interface::MoveitEGraphInterface::addTrajToEGraph(
         std::string robot) {
     moveit_msgs::DisplayTrajectory traj = getGraphFromStorage(graph, robot);
 
-    //combine traj and input_trajectory
+//combine traj and input_trajectory
     traj.trajectory.insert(traj.trajectory.end(),
             input_trajectory.trajectory.begin(),
             input_trajectory.trajectory.end());

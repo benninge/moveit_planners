@@ -122,7 +122,7 @@ namespace
 using namespace ompl_interface;
 
 template<typename T>
-static ompl::base::PlannerPtr allocatePlanner(const ob::SpaceInformationPtr &si, const std::string &new_name, const ModelBasedPlanningContextSpecification &spec)
+ompl::base::PlannerPtr allocatePlanner(const ob::SpaceInformationPtr &si, const std::string &new_name, const ModelBasedPlanningContextSpecification &spec)
 {
   ompl::base::PlannerPtr planner(new T(si));
   if (!new_name.empty())
@@ -131,10 +131,25 @@ static ompl::base::PlannerPtr allocatePlanner(const ob::SpaceInformationPtr &si,
   planner->setup();
   return planner;
 }
+
+template<>
+ompl::base::PlannerPtr allocatePlanner<ompl::geometric::eGraphPlanner>(const ob::SpaceInformationPtr &si, const std::string &new_name, const ModelBasedPlanningContextSpecification &spec)
+{
+  ROS_ERROR("using eGraphPlanner template");
+  boost::shared_ptr<ompl::geometric::eGraphPlanner> planner(new ompl::geometric::eGraphPlanner(si));
+  if (!new_name.empty())
+    planner->setName(new_name);
+  planner->params().setParams(spec.config_, true);
+  planner->setup();
+  //planner->setDataBase();
+  return planner;
+}
+ 
 }
 
 ompl_interface::ConfiguredPlannerAllocator ompl_interface::PlanningContextManager::plannerSelector(const std::string &planner) const
 {
+
   std::map<std::string, ConfiguredPlannerAllocator>::const_iterator it = known_planners_.find(planner);
   if (it != known_planners_.end())
     return it->second;

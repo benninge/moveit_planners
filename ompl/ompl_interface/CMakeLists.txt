@@ -3,6 +3,7 @@ set(MOVEIT_LIB_NAME moveit_ompl_interface)
 add_library(${MOVEIT_LIB_NAME}
   src/ompl_interface.cpp
   src/MoveitEGraphInterface.cpp
+  src/eGraphTraj_storage.cpp
   src/planning_context_manager.cpp
   src/constraints_library.cpp
   src/model_based_planning_context.cpp
