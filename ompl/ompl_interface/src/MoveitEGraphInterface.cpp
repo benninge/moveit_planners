@@ -8,55 +8,164 @@
 #include <moveit/robot_state/conversions.h>
 
 ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface() :
-        nh_("~") {
+        nh_("~"), id_(0) {
 
     //init Storage
     storage_Trajs_ = new ompl_interface::EGraphTrajStorage();
     pc_ = ompl_interface_->getLastPlanningContext();
 
     if (!pc_ || !pc_->getPlanningScene()) {
-            ROS_ERROR(
-                    "MoveitEGraphInterface: No planning context to sample states for");
-            return;
-        }
+        ROS_ERROR(
+                "MoveitEGraphInterface: No planning context to sample states for");
+        return;
+    }
+    markerArray_pub_ = nh_.advertise<visualization_msgs::MarkerArray>(
+            "visualization_marker_array", 1000);
 }
 
 ompl_interface::MoveitEGraphInterface::~MoveitEGraphInterface() {
 
 }
 
+void ompl_interface::MoveitEGraphInterface::eGraphToMarkerArray(
+        moveit_msgs::DisplayTrajectory display_trajectory,
+        robot_model::RobotModelConstPtr &robot_model) {
+    for (int i = 0; i < display_trajectory.trajectory.size(); i++) {
+        trajToMarkerArray(display_trajectory.trajectory[i], robot_model);
+    }
+    publishMarkerArray(markerArray_pub_);
+}
+
+void ompl_interface::MoveitEGraphInterface::trajToMarkerArray(
+        moveit_msgs::RobotTrajectory trajectory,
+        robot_model::RobotModelConstPtr &robot_model) {
+    moveit::core::RobotStatePtr kinematic_state(
+            new robot_state::RobotState(robot_model));
+    kinematic_state->setToDefaultValues();
+    const moveit::core::JointModelGroup* joint_model_group =
+            robot_model->getJointModelGroup("omnirob_lbr");
+
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "/world";
+    marker.type = visualization_msgs::Marker::LINE_STRIP;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.ns = "basic_shapes";
+    marker.id = id_++;
+    marker.lifetime = ros::Duration();
+    marker.scale.x = 0.01;
+    marker.color.r = 1.0f;
+    marker.color.g = 0.0f;
+    marker.color.b = 0.0f;
+    marker.color.a = 1.0;
+    geometry_msgs::Point p;
+    std::vector<double> v;
+
+    for (size_t i = 0; i < trajectory.joint_trajectory.points.size(); i++) {
+        v = trajectory.joint_trajectory.points[i].positions;
+
+        kinematic_state->setJointPositions(
+                trajectory.joint_trajectory.joint_names[0], &v[0]);
+        kinematic_state->setJointPositions(
+                trajectory.joint_trajectory.joint_names[1], &v[1]);
+        kinematic_state->setJointPositions(
+                trajectory.joint_trajectory.joint_names[2], &v[2]);
+        kinematic_state->setJointPositions(
+                trajectory.joint_trajectory.joint_names[3], &v[3]);
+        kinematic_state->setJointPositions(
+                trajectory.joint_trajectory.joint_names[4], &v[4]);
+        kinematic_state->setJointPositions(
+                trajectory.joint_trajectory.joint_names[5], &v[5]);
+        kinematic_state->setJointPositions(
+                trajectory.joint_trajectory.joint_names[6], &v[6]);
+        const Eigen::Affine3d &end_effector_state =
+                kinematic_state->getGlobalLinkTransform("lwr_joint7_frame");
+        geometry_msgs::Pose pose = transformPose(end_effector_state);
+        p.x = pose.position.x;
+        p.y = pose.position.y;
+        p.z = pose.position.z;
+        marker.points.push_back(p);
+
+        //draw start_state
+        if (i == 0) {
+            nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
+                    0.0f, 1.0f, 0.0f);
+        }
+
+        //draw goal_state
+        if (i == trajectory.joint_trajectory.points.size() - 1) {
+            nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
+                    0.0f, 0.0f, 1.0f);
+        }
+
+    }
+
+    mA_.markers.push_back(marker);
+}
+
+void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x,
+        double y, double z, float red, float green, float blue) {
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "/world";
+    marker.type = visualization_msgs::Marker::SPHERE;
+    marker.ns = "basic_shapes";
+    marker.id = id_++;
+    marker.lifetime = ros::Duration();
+    marker.action = visualization_msgs::Marker::ADD;
+
+    marker.pose.position.x = x;
+    marker.pose.position.y = y;
+    marker.pose.position.z = z;
+    marker.pose.orientation.w = 1.0;
+    marker.scale.x = 0.05;
+    marker.scale.y = 0.05;
+    marker.scale.z = 0.05;
+    marker.color.r = red;
+    marker.color.g = green;
+    marker.color.b = blue;
+    marker.color.a = 1.0;
+
+    mA_.markers.push_back(marker);
+}
+
 void ompl_interface::MoveitEGraphInterface::save(
-        std::vector<ompl::geometric::eGraphPlanner::EGraphNode*> eGraph,
+        std::vector<ompl::geometric::EGraphNode*> eGraph,
         const ompl::base::SpaceInformationPtr &si) {
 
     //traverse egraph and search for goals
     for (size_t i = 0; i < eGraph.size(); i++) {
         //check if goal
         if (eGraph[i]->children.empty() == true) {
-            ompl::geometric::eGraphPlanner::EGraphNode *current_node = eGraph[i];
-            std::vector<ompl::geometric::eGraphPlanner::EGraphNode*> node_traj;
+            ompl::geometric::EGraphNode *current_node = eGraph[i];
+            std::vector<ompl::geometric::EGraphNode*> node_traj;
             while (current_node != NULL) {
-                        node_traj.push_back(current_node);
-                        current_node = current_node->parent;
-                    }
+                node_traj.push_back(current_node);
+                current_node = current_node->parent;
+            }
+            moveit_msgs::DisplayTrajectory traj = omplNodesToDisplayTraj(
+                    node_traj);
             if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
-                addTrajToEGraph(omplNodesToDisplayTraj(node_traj), "graph", "robot");
+                addTrajToEGraph(traj, "graph", "robot");
             } else {
-                addGraphToStorage(omplNodesToDisplayTraj(node_traj), "graph", "graph");
+                addGraphToStorage(traj, "graph", "graph");
             }
         }
     }
+    moveit_msgs::DisplayTrajectory storage_trajectory = getGraphFromStorage(
+            "graph", "robot");
+    robot_model::RobotModelConstPtr robot_model = pc_->getRobotModel();
+    eGraphToMarkerArray(storage_trajectory, robot_model);
 }
 
-void ompl_interface::MoveitEGraphInterface::load(
-        std::vector<ompl::geometric::eGraphPlanner::EGraphNode*>& eGraph,
+std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::load(
         const ompl::base::SpaceInformationPtr &si) {
+    std::vector<ompl::geometric::EGraphNode*> eGraph;
     moveit_msgs::DisplayTrajectory traj = getGraphFromStorage("graph", "robot");
-    displayTrajToOmplNodes(traj, eGraph, si);
+    eGraph = displayTrajToOmplNodes(traj, si);
+    return eGraph;
 }
 
 moveit_msgs::DisplayTrajectory ompl_interface::MoveitEGraphInterface::omplNodesToDisplayTraj(
-        std::vector<ompl::geometric::eGraphPlanner::EGraphNode*> nodes) {
+        std::vector<ompl::geometric::EGraphNode*> nodes) {
     moveit_msgs::DisplayTrajectory traj_msg;
     robot_state::RobotState rstate(pc_->getRobotModel());
     robot_trajectory::RobotTrajectory traj(pc_->getRobotModel(),
@@ -78,12 +187,12 @@ moveit_msgs::DisplayTrajectory ompl_interface::MoveitEGraphInterface::omplNodesT
     return traj_msg;
 }
 
-void ompl_interface::MoveitEGraphInterface::displayTrajToOmplNodes(
+std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::displayTrajToOmplNodes(
         moveit_msgs::DisplayTrajectory traj_msg,
-        std::vector<ompl::geometric::eGraphPlanner::EGraphNode*>& nodes,
         const ompl::base::SpaceInformationPtr &si) {
     robot_state::RobotState rstate(pc_->getRobotModel());
     std::vector<double> v;
+    std::vector<ompl::geometric::EGraphNode*> nodes;
 
     //traverse trajs
     for (size_t i = 0; i < traj_msg.trajectory.size(); i++) {
@@ -101,10 +210,10 @@ void ompl_interface::MoveitEGraphInterface::displayTrajToOmplNodes(
                         traj_msg.trajectory[i].joint_trajectory.joint_names[k],
                         &v[k]);
             }
-            ompl::geometric::eGraphPlanner::EGraphNode *node =
-                    new ompl::geometric::eGraphPlanner::EGraphNode(si);
+            ompl::geometric::EGraphNode *node = new ompl::geometric::EGraphNode(
+                    si);
             pc_->getOMPLStateSpace()->copyToOMPLState(node->state, rstate);
-            ompl::geometric::eGraphPlanner::EGraphNode *old_node;
+            ompl::geometric::EGraphNode *old_node;
 
             //reconstruct parents and neighbors
             if (j == 0) {
@@ -119,6 +228,7 @@ void ompl_interface::MoveitEGraphInterface::displayTrajToOmplNodes(
             nodes.push_back(node);
         }
     }
+    return nodes;
 
 }
 

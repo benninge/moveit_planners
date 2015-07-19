@@ -56,6 +56,7 @@
 #include <ompl/geometric/planners/rrt/RRTstarTEST.h>
 #include <ompl/geometric/planners/rrt/eGraphPlanner.h>
 #include <moveit/ompl_interface/MoveitEGraphInterface.h>
+#include <ompl/geometric/planners/rrt/BaseEGraphInterface.h>
 
 #include <ompl/geometric/planners/prm/PRM.h>
 #include <ompl/geometric/planners/prm/PRMstar.h>
@@ -141,7 +142,8 @@ ompl::base::PlannerPtr allocatePlanner<ompl::geometric::eGraphPlanner>(const ob:
     planner->setName(new_name);
   planner->params().setParams(spec.config_, true);
   planner->setup();
-  //planner->setDataBase();
+  ompl::geometric::BaseEGraphInterface* database = new ompl_interface::MoveitEGraphInterface();
+  planner->setDatabase(database);
   return planner;
 }
  
