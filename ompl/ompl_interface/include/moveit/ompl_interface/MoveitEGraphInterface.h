@@ -28,10 +28,10 @@ public:
 
     virtual ~MoveitEGraphInterface();
 
-    std::vector<ompl::geometric::EGraphNode*> load(
+    virtual std::vector<ompl::geometric::EGraphNode*> load(
             const ompl::base::SpaceInformationPtr &si);
 
-    void save(std::vector<ompl::geometric::EGraphNode*> eGraph,
+    virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph,
             const ompl::base::SpaceInformationPtr &si);
 
 private:
