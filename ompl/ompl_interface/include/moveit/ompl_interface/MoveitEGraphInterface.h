@@ -23,8 +23,10 @@ namespace ompl_interface {
 class MoveitEGraphInterface: public ompl::geometric::BaseEGraphInterface {
     friend class ompl::geometric::eGraphPlanner;
 public:
-
-    MoveitEGraphInterface(ompl_interface::ModelBasedPlanningContextPtr pc);
+    static MoveitEGraphInterface& getInstance() {
+        static MoveitEGraphInterface instance;
+        return instance;
+    }
 
     virtual ~MoveitEGraphInterface();
 
@@ -35,6 +37,11 @@ public:
             const ompl::base::SpaceInformationPtr &si);
 
 private:
+    MoveitEGraphInterface();
+
+    MoveitEGraphInterface(MoveitEGraphInterface const&) = delete;
+    void operator=(MoveitEGraphInterface const&) = delete;
+
     moveit_msgs::DisplayTrajectory omplNodesToDisplayTraj(
             std::vector<ompl::geometric::EGraphNode*> nodes);
     std::vector<ompl::geometric::EGraphNode*> displayTrajToOmplNodes(

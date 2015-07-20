@@ -7,13 +7,13 @@
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/robot_state/conversions.h>
 
-ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface(ompl_interface::ModelBasedPlanningContextPtr pc) :
+ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface() :
         nh_("~"), id_(0) {
 
     //init Storage
     storage_Trajs_ = new ompl_interface::EGraphTrajStorage();
     //pc_ = ompl_interface_->getLastPlanningContext();
-    pc_ = pc;
+    //pc_ = pc;
 
     if (!pc_ || !pc_->getPlanningScene()) {
         ROS_ERROR(
