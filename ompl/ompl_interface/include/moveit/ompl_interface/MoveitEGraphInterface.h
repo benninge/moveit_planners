@@ -23,9 +23,9 @@ namespace ompl_interface {
 class MoveitEGraphInterface: public ompl::geometric::BaseEGraphInterface {
     friend class ompl::geometric::eGraphPlanner;
 public:
-    static MoveitEGraphInterface& getInstance() {
+    static MoveitEGraphInterface* getInstance() {
         static MoveitEGraphInterface instance;
-        return instance;
+        return &instance;
     }
 
     virtual ~MoveitEGraphInterface();
