@@ -227,6 +227,7 @@ private:
 
   struct CachedContexts;
   boost::shared_ptr<CachedContexts>                     cached_contexts_;
+
 };
 
 }

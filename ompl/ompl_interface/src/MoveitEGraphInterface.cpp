@@ -7,12 +7,13 @@
 #include <moveit/robot_state/robot_state.h>
 #include <moveit/robot_state/conversions.h>
 
-ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface() :
+ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface(ompl_interface::ModelBasedPlanningContextPtr pc) :
         nh_("~"), id_(0) {
 
     //init Storage
     storage_Trajs_ = new ompl_interface::EGraphTrajStorage();
-    pc_ = ompl_interface_->getLastPlanningContext();
+    //pc_ = ompl_interface_->getLastPlanningContext();
+    pc_ = pc;
 
     if (!pc_ || !pc_->getPlanningScene()) {
         ROS_ERROR(
@@ -21,6 +22,9 @@ ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface() :
     }
     markerArray_pub_ = nh_.advertise<visualization_msgs::MarkerArray>(
             "visualization_marker_array", 1000);
+
+    ROS_WARN("storage reset");
+    storage_Trajs_->reset();
 }
 
 ompl_interface::MoveitEGraphInterface::~MoveitEGraphInterface() {
@@ -144,9 +148,11 @@ void ompl_interface::MoveitEGraphInterface::save(
             moveit_msgs::DisplayTrajectory traj = omplNodesToDisplayTraj(
                     node_traj);
             if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
-                addTrajToEGraph(traj, "graph", "robot");
+                bool b1 = addTrajToEGraph(traj, "graph", "robot");
+                ROS_WARN("traj add success?: "+ b1 ? "true" : "false");
             } else {
-                addGraphToStorage(traj, "graph", "graph");
+                bool b2 = addGraphToStorage(traj, "graph", "graph");
+                ROS_WARN("graph add success?: "+ b2 ? "true" : "false");
             }
         }
     }

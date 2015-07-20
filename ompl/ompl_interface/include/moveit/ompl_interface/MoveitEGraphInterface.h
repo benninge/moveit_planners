@@ -24,7 +24,7 @@ class MoveitEGraphInterface: public ompl::geometric::BaseEGraphInterface {
     friend class ompl::geometric::eGraphPlanner;
 public:
 
-    MoveitEGraphInterface();
+    MoveitEGraphInterface(ompl_interface::ModelBasedPlanningContextPtr pc);
 
     virtual ~MoveitEGraphInterface();
 
@@ -70,10 +70,10 @@ private:
 
     EGraphTrajStorage* storage_Trajs_;
 
-    boost::scoped_ptr<OMPLInterface> ompl_interface_;
+    //boost::scoped_ptr<OMPLInterface> ompl_interface_;
     ros::NodeHandle nh_;
-    ros::Publisher pub_valid_states_;
-    ros::Publisher pub_valid_traj_;
+    //ros::Publisher pub_valid_states_;
+    //ros::Publisher pub_valid_traj_;
     ompl_interface::ModelBasedPlanningContextPtr pc_;
     visualization_msgs::MarkerArray mA_;
     ros::Publisher markerArray_pub_;
