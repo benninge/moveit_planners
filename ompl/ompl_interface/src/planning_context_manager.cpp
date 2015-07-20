@@ -142,8 +142,8 @@ ompl::base::PlannerPtr allocatePlanner<ompl::geometric::eGraphPlanner>(const ob:
     planner->setName(new_name);
   planner->params().setParams(spec.config_, true);
   planner->setup();
-  //ompl::geometric::BaseEGraphInterface* database = new ompl_interface::MoveitEGraphInterface();
-  //planner->setDatabase(database);
+  ompl::geometric::BaseEGraphInterface* database = new ompl_interface::MoveitEGraphInterface();
+  planner->setDatabase(database);
   return planner;
 }
  
