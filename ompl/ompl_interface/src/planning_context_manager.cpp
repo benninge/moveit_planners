@@ -55,6 +55,7 @@
 #include <ompl/geometric/planners/rrt/RRTstarTEST.h>
 #include <ompl/geometric/planners/rrt/eGraphPlanner.h>
 #include <moveit/ompl_interface/MoveitEGraphInterface.h>
+#include <ompl/geometric/planners/rrt/BaseEGraphInterface.h>
 #include <ompl/geometric/planners/prm/PRM.h>
 #include <ompl/geometric/planners/prm/PRMstar.h>
 
@@ -127,6 +128,19 @@ static ompl::base::PlannerPtr allocatePlanner(const ob::SpaceInformationPtr &si,
     planner->setName(new_name);
   planner->params().setParams(spec.config_, true);
   planner->setup();
+  return planner;
+}
+template<>
+ompl::base::PlannerPtr allocatePlanner<ompl::geometric::eGraphPlanner>(const ob::SpaceInformationPtr &si, const std::string &new_name, const ModelBasedPlanningContextSpecification &spec)
+{
+  ROS_ERROR("using eGraphPlanner template");
+  boost::shared_ptr<ompl::geometric::eGraphPlanner> planner(new ompl::geometric::eGraphPlanner(si));
+  if (!new_name.empty())
+    planner->setName(new_name);
+  planner->params().setParams(spec.config_, true);
+  planner->setup();
+  //og::EGraphInterface* database = ompl_interface::MoveitEGraphInterface::getInstance();
+  planner->setDatabase(ompl_interface::MoveitEGraphInterface::getInstance());
   return planner;
 }
 }
