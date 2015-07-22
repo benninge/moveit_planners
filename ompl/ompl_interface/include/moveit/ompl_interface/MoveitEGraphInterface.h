@@ -39,6 +39,7 @@ public:
             ROS_WARN("storage reset");
             storage_Trajs_->reset();
     }
+    virtual void resetMarkers();
 
 private:
     MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
@@ -64,13 +65,13 @@ private:
             robot_model::RobotModelConstPtr &robot_model);
     void nodeToMarkerArray(double x, double y, double z, float red, float green,
             float blue);
-    void publishMarkerArray() {
+    void publishMarkerArray(visualization_msgs::MarkerArray mA) {
         while (markerArray_pub_.getNumSubscribers() < 1) {
             ROS_WARN("Please create a subscriber to visualization_marker_array");
             sleep(1);
+            ROS_WARN_ONCE("Subscriber found");
         }
-        ROS_WARN_ONCE("Subscriber found");
-        markerArray_pub_.publish(mA_);
+        markerArray_pub_.publish(mA);
     }
     geometry_msgs::Pose transformPose(
             const Eigen::Affine3d end_effector_state) {

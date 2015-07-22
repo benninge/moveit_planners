@@ -35,7 +35,7 @@ void ompl_interface::MoveitEGraphInterface::eGraphToMarkerArray(
     for (int i = 0; i < display_trajectory.trajectory.size(); i++) {
         trajToMarkerArray(display_trajectory.trajectory[i], robot_model);
     }
-    publishMarkerArray();
+    publishMarkerArray(mA_);
 }
 
 void ompl_interface::MoveitEGraphInterface::trajToMarkerArray(
@@ -161,6 +161,8 @@ void ompl_interface::MoveitEGraphInterface::save(
             "graph", "robot");
     //robot_model::RobotModelConstPtr robot_model = pc_->getRobotModel();
     robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
+
+    resetMarkers();
     eGraphToMarkerArray(storage_trajectory, robot_model);
 }
 
@@ -176,6 +178,17 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
         ROS_INFO("no trajectories saved in database");
     }
     return eGraph;
+}
+
+void ompl_interface::MoveitEGraphInterface::resetMarkers() {
+    visualization_msgs::MarkerArray mADelete;
+    while (!mA_.markers.empty()) {
+        visualization_msgs::Marker marker = *mA_.markers.begin();
+        mA_.markers.erase(mA_.markers.begin());
+        marker.action = visualization_msgs::Marker::DELETE;
+        mADelete.markers.push_back(marker);
+    }
+    publishMarkerArray(mADelete);
 }
 
 moveit_msgs::DisplayTrajectory ompl_interface::MoveitEGraphInterface::omplNodesToDisplayTraj(
