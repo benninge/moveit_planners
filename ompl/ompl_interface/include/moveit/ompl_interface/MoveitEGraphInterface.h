@@ -23,8 +23,8 @@ namespace ompl_interface {
 class MoveitEGraphInterface: public ompl::geometric::BaseEGraphInterface {
     friend class ompl::geometric::eGraphPlanner;
 public:
-    static MoveitEGraphInterface* getInstance() {
-        static MoveitEGraphInterface instance;
+    static MoveitEGraphInterface* getInstance(ModelBasedStateSpacePtr ssPtr) {
+        static MoveitEGraphInterface instance(ssPtr);
         return &instance;
     }
 
@@ -35,9 +35,13 @@ public:
 
     virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph,
             const ompl::base::SpaceInformationPtr &si);
+    virtual void resetEGraph() {
+            ROS_WARN("storage reset");
+            storage_Trajs_->reset();
+    }
 
 private:
-    MoveitEGraphInterface();
+    MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
     MoveitEGraphInterface(MoveitEGraphInterface const&) = delete;
     void operator=(MoveitEGraphInterface const&) = delete;
@@ -60,13 +64,13 @@ private:
             robot_model::RobotModelConstPtr &robot_model);
     void nodeToMarkerArray(double x, double y, double z, float red, float green,
             float blue);
-    void publishMarkerArray(ros::Publisher markerArray_pub) {
-        while (markerArray_pub.getNumSubscribers() < 1) {
-            ROS_WARN("Please create a subscriber to the markerArray");
+    void publishMarkerArray() {
+        while (markerArray_pub_.getNumSubscribers() < 1) {
+            ROS_WARN("Please create a subscriber to visualization_marker_array");
             sleep(1);
         }
-        ROS_WARN_ONCE("Please create a subscriber to the marker -> FOUND");
-        markerArray_pub.publish(mA_);
+        ROS_WARN_ONCE("Subscriber found");
+        markerArray_pub_.publish(mA_);
     }
     geometry_msgs::Pose transformPose(
             const Eigen::Affine3d end_effector_state) {
@@ -81,10 +85,11 @@ private:
     ros::NodeHandle nh_;
     //ros::Publisher pub_valid_states_;
     //ros::Publisher pub_valid_traj_;
-    ompl_interface::ModelBasedPlanningContextPtr pc_;
+    //ompl_interface::ModelBasedPlanningContextPtr pc_;
     visualization_msgs::MarkerArray mA_;
     ros::Publisher markerArray_pub_;
     int id_;
+    ModelBasedStateSpacePtr ssPtr_;
 };
 
 }
