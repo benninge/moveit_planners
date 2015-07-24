@@ -40,12 +40,13 @@ public:
             storage_Trajs_->reset();
     }
     virtual void resetMarkers();
+    virtual void draw();
 
 private:
     MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
-    MoveitEGraphInterface(MoveitEGraphInterface const&) = delete;
-    void operator=(MoveitEGraphInterface const&) = delete;
+    MoveitEGraphInterface(MoveitEGraphInterface const&); //dont implement
+    void operator=(MoveitEGraphInterface const&); //dont implement
 
     moveit_msgs::DisplayTrajectory omplNodesToDisplayTraj(
             std::vector<ompl::geometric::EGraphNode*> nodes);

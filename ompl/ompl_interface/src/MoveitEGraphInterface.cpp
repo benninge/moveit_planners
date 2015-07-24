@@ -87,14 +87,11 @@ void ompl_interface::MoveitEGraphInterface::trajToMarkerArray(
         p.z = pose.position.z;
         marker.points.push_back(p);
 
-        //draw start_state
-        if (i == 0) {
+        //draw goal_state and other states
+        if (i == trajectory.joint_trajectory.points.size() - 1) {
             nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
                     0.0f, 1.0f, 0.0f);
-        }
-
-        //draw goal_state
-        if (i == trajectory.joint_trajectory.points.size() - 1) {
+        } else {
             nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
                     0.0f, 0.0f, 1.0f);
         }
@@ -133,15 +130,16 @@ void ompl_interface::MoveitEGraphInterface::save(
         std::vector<ompl::geometric::EGraphNode*> eGraph,
         const ompl::base::SpaceInformationPtr &si) {
 
-    //traverse egraph and search for goals
+    resetEGraph();
+    //traverse egraph and search for start
     for (size_t i = 0; i < eGraph.size(); i++) {
-        //check if goal
-        if (eGraph[i]->children.empty() == true) {
+        //check if start
+        if (eGraph[i]->parent == NULL) {
             ompl::geometric::EGraphNode *current_node = eGraph[i];
             std::vector<ompl::geometric::EGraphNode*> node_traj;
             while (current_node != NULL) {
                 node_traj.push_back(current_node);
-                current_node = current_node->parent;
+                current_node = current_node->child;
             }
             moveit_msgs::DisplayTrajectory traj = omplNodesToDisplayTraj(
                     node_traj);
@@ -156,14 +154,16 @@ void ompl_interface::MoveitEGraphInterface::save(
             }
         }
     }
-
-    moveit_msgs::DisplayTrajectory storage_trajectory = getGraphFromStorage(
-            "graph", "robot");
-    //robot_model::RobotModelConstPtr robot_model = pc_->getRobotModel();
-    robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
-
-    resetMarkers();
-    eGraphToMarkerArray(storage_trajectory, robot_model);
+}
+void ompl_interface::MoveitEGraphInterface::draw() {
+    if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
+        moveit_msgs::DisplayTrajectory storage_trajectory = getGraphFromStorage(
+                "graph", "robot");
+        //robot_model::RobotModelConstPtr robot_model = pc_->getRobotModel();
+        robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
+        resetMarkers();
+        eGraphToMarkerArray(storage_trajectory, robot_model);
+    }
 }
 
 std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::load(
@@ -177,6 +177,7 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
     } else {
         ROS_INFO("no trajectories saved in database");
     }
+    draw();
     return eGraph;
 }
 
@@ -230,6 +231,7 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
     //traverse trajs
     for (size_t i = 0; i < traj_msg.trajectory.size(); i++) {
         //traverse points on traj
+        ompl::geometric::EGraphNode *old_node = NULL;
         for (size_t j = 0;
                 j < traj_msg.trajectory[i].joint_trajectory.points.size();
                 j++) {
@@ -247,14 +249,15 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
                     si);
             //pc_->getOMPLStateSpace()->copyToOMPLState(node->state, rstate);
             ssPtr_->copyToOMPLState(node->state, rstate);
-            ompl::geometric::EGraphNode *old_node;
 
             //reconstruct parents and neighbors
             if (j == 0) {
-                //start of traj, do nothing
+                node->parent = NULL;
             } else {
                 //node->neighbors.push_back(old_node);
-                old_node->children.push_back(node);
+                if (old_node == NULL)
+                    ROS_ERROR("old node is null, this should not happen!");
+                old_node->child = node;
                 node->parent = old_node;
             }
 
@@ -263,7 +266,6 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
         }
     }
     return nodes;
-
 }
 
 bool ompl_interface::MoveitEGraphInterface::addGraphToStorage(
