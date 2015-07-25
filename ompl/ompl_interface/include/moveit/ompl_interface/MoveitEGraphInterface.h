@@ -16,7 +16,6 @@
 #include <vector>
 #include <utility>
 
-//using namespace moveit_warehouse;
 
 namespace ompl_interface {
 
@@ -83,11 +82,7 @@ private:
 
     EGraphTrajStorage* storage_Trajs_;
 
-    //boost::scoped_ptr<OMPLInterface> ompl_interface_;
     ros::NodeHandle nh_;
-    //ros::Publisher pub_valid_states_;
-    //ros::Publisher pub_valid_traj_;
-    //ompl_interface::ModelBasedPlanningContextPtr pc_;
     visualization_msgs::MarkerArray mA_;
     ros::Publisher markerArray_pub_;
     int id_;
