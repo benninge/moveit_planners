@@ -25,16 +25,17 @@ ompl_interface::MoveitEGraphInterface::~MoveitEGraphInterface() {
 
 void ompl_interface::MoveitEGraphInterface::eGraphToMarkerArray(
         moveit_msgs::DisplayTrajectory display_trajectory,
-        robot_model::RobotModelConstPtr &robot_model) {
+        robot_model::RobotModelConstPtr &robot_model, int color_scheme) {
     for (int i = 0; i < display_trajectory.trajectory.size(); i++) {
-        trajToMarkerArray(display_trajectory.trajectory[i], robot_model);
+        trajToMarkerArray(display_trajectory.trajectory[i], robot_model,
+                color_scheme);
     }
     publishMarkerArray(mA_);
 }
 
 void ompl_interface::MoveitEGraphInterface::trajToMarkerArray(
         moveit_msgs::RobotTrajectory trajectory,
-        robot_model::RobotModelConstPtr &robot_model) {
+        robot_model::RobotModelConstPtr &robot_model, int color_scheme) {
     moveit::core::RobotStatePtr kinematic_state(
             new robot_state::RobotState(robot_model));
     kinematic_state->setToDefaultValues();
@@ -49,10 +50,18 @@ void ompl_interface::MoveitEGraphInterface::trajToMarkerArray(
     marker.id = id_++;
     marker.lifetime = ros::Duration();
     marker.scale.x = 0.01;
-    marker.color.r = 1.0f;
-    marker.color.g = 0.0f;
-    marker.color.b = 0.0f;
-    marker.color.a = 1.0;
+    if (color_scheme == 1) {
+        marker.color.r = 1.0f;
+        marker.color.g = 0.0f;
+        marker.color.b = 0.0f;
+        marker.color.a = 0.5;
+    }
+    if (color_scheme == 2) {
+        marker.color.r = 0.0f;
+        marker.color.g = 1.0f;
+        marker.color.b = 0.0f;
+        marker.color.a = 1.0;
+    }
     geometry_msgs::Point p;
     std::vector<double> v;
 
@@ -82,12 +91,13 @@ void ompl_interface::MoveitEGraphInterface::trajToMarkerArray(
         marker.points.push_back(p);
 
         //draw goal_state and other states
-        if (i == trajectory.joint_trajectory.points.size() - 1) {
+        if (color_scheme == 1) {
             nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
-                    0.0f, 1.0f, 0.0f);
-        } else {
+                    0.0f, 0.0f, 1.0f, 0.5f);
+        }
+        if (color_scheme == 2) {
             nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
-                    0.0f, 0.0f, 1.0f);
+                    0.0f, 1.0f, 0.0f, 1.0f);
         }
 
     }
@@ -96,7 +106,7 @@ void ompl_interface::MoveitEGraphInterface::trajToMarkerArray(
 }
 
 void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x,
-        double y, double z, float red, float green, float blue) {
+        double y, double z, float red, float green, float blue, float alpha) {
     visualization_msgs::Marker marker;
     marker.header.frame_id = "/world";
     marker.type = visualization_msgs::Marker::SPHERE;
@@ -115,7 +125,7 @@ void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x,
     marker.color.r = red;
     marker.color.g = green;
     marker.color.b = blue;
-    marker.color.a = 1.0;
+    marker.color.a = alpha;
 
     mA_.markers.push_back(marker);
 }
@@ -124,7 +134,11 @@ void ompl_interface::MoveitEGraphInterface::save(
         std::vector<ompl::geometric::EGraphNode*> eGraph,
         const ompl::base::SpaceInformationPtr &si) {
     mutex.lock();
+    draw();
     moveit_msgs::DisplayTrajectory traj = omplNodesToDisplayTraj(eGraph);
+    robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
+    eGraphToMarkerArray(traj, robot_model, 2);
+
     if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
         ROS_INFO("eGraph already exists, add traj to it");
         bool b1 = addTrajToEGraph(traj, "graph", "robot");
@@ -134,7 +148,6 @@ void ompl_interface::MoveitEGraphInterface::save(
         bool b2 = addGraphToStorage(traj, "graph", "robot");
         ROS_WARN("graph add success?: " + b2 ? "true" : "false");
     }
-    draw();
     mutex.unlock();
 }
 
@@ -144,7 +157,7 @@ void ompl_interface::MoveitEGraphInterface::draw() {
                 "graph", "robot");
         robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
         resetMarkers();
-        eGraphToMarkerArray(storage_trajectory, robot_model);
+        eGraphToMarkerArray(storage_trajectory, robot_model, 1);
     }
 }
 

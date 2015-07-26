@@ -62,11 +62,11 @@ private:
             std::string robot);
 
     void eGraphToMarkerArray(moveit_msgs::DisplayTrajectory display_trajectory,
-            robot_model::RobotModelConstPtr &robot_model);
+            robot_model::RobotModelConstPtr &robot_model, int color_scheme);
     void trajToMarkerArray(moveit_msgs::RobotTrajectory trajectory,
-            robot_model::RobotModelConstPtr &robot_model);
+            robot_model::RobotModelConstPtr &robot_model, int color_scheme);
     void nodeToMarkerArray(double x, double y, double z, float red, float green,
-            float blue);
+            float blue, float alpha);
     void publishMarkerArray(visualization_msgs::MarkerArray mA) {
         while (markerArray_pub_.getNumSubscribers() < 1) {
             ROS_WARN("Please create a subscriber to visualization_marker_array");
