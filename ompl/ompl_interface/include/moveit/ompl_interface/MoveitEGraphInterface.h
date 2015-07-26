@@ -12,6 +12,7 @@
 #include <moveit_msgs/RobotTrajectory.h>
 #include <moveit/ompl_interface/ompl_interface.h>
 #include <eigen_conversions/eigen_msg.h>
+#include <boost/thread/mutex.hpp>
 #include <limits>
 #include <vector>
 #include <utility>
@@ -20,7 +21,6 @@
 namespace ompl_interface {
 
 class MoveitEGraphInterface: public ompl::geometric::BaseEGraphInterface {
-    friend class ompl::geometric::eGraphPlanner;
 public:
     static MoveitEGraphInterface* getInstance(ModelBasedStateSpacePtr ssPtr) {
         static MoveitEGraphInterface instance(ssPtr);
@@ -35,13 +35,15 @@ public:
     virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph,
             const ompl::base::SpaceInformationPtr &si);
     virtual void resetEGraph() {
+            mutex.lock();
             ROS_WARN("storage reset");
             storage_Trajs_->reset();
+            mutex.unlock();
     }
     virtual void resetMarkers();
-    virtual void draw();
 
 private:
+    void draw();
     MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
     MoveitEGraphInterface(MoveitEGraphInterface const&); //dont implement
@@ -83,10 +85,13 @@ private:
     EGraphTrajStorage* storage_Trajs_;
 
     ros::NodeHandle nh_;
+    //TODO: change to improve threaded behaviour?
     visualization_msgs::MarkerArray mA_;
     ros::Publisher markerArray_pub_;
     int id_;
     ModelBasedStateSpacePtr ssPtr_;
+   boost::mutex mutex;
+   boost::mutex resetMarkers_mutex;
 };
 
 }

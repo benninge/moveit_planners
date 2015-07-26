@@ -123,7 +123,7 @@ void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x,
 void ompl_interface::MoveitEGraphInterface::save(
         std::vector<ompl::geometric::EGraphNode*> eGraph,
         const ompl::base::SpaceInformationPtr &si) {
-
+    mutex.lock();
     moveit_msgs::DisplayTrajectory traj = omplNodesToDisplayTraj(eGraph);
     if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
         ROS_INFO("eGraph already exists, add traj to it");
@@ -134,146 +134,157 @@ void ompl_interface::MoveitEGraphInterface::save(
         bool b2 = addGraphToStorage(traj, "graph", "robot");
         ROS_WARN("graph add success?: " + b2 ? "true" : "false");
     }
+    draw();
+    mutex.unlock();
 }
-
 
 void ompl_interface::MoveitEGraphInterface::draw() {
-if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
-moveit_msgs::DisplayTrajectory storage_trajectory = getGraphFromStorage("graph",
-        "robot");
-robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
-resetMarkers();
-eGraphToMarkerArray(storage_trajectory, robot_model);
-}
+    if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
+        moveit_msgs::DisplayTrajectory storage_trajectory = getGraphFromStorage(
+                "graph", "robot");
+        robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
+        resetMarkers();
+        eGraphToMarkerArray(storage_trajectory, robot_model);
+    }
 }
 
 std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::load(
-const ompl::base::SpaceInformationPtr &si) {
-std::vector<ompl::geometric::EGraphNode*> eGraph;
-if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
-ROS_INFO("loading");
-moveit_msgs::DisplayTrajectory traj = getGraphFromStorage("graph", "robot");
-eGraph = displayTrajToOmplNodes(traj, si);
-} else {
-ROS_INFO("no trajectories saved in database");
-}
-draw();
-return eGraph;
+        const ompl::base::SpaceInformationPtr &si) {
+    mutex.lock();
+    std::vector<ompl::geometric::EGraphNode*> eGraph;
+    if (storage_Trajs_->hasEGraphTraj("graph", "robot") == true) {
+        ROS_INFO("loading");
+        moveit_msgs::DisplayTrajectory traj = getGraphFromStorage("graph",
+                "robot");
+        eGraph = displayTrajToOmplNodes(traj, si);
+    } else {
+        ROS_INFO("no trajectories saved in database");
+    }
+    draw();
+    mutex.unlock();
+    return eGraph;
 }
 
 void ompl_interface::MoveitEGraphInterface::resetMarkers() {
-visualization_msgs::MarkerArray mADelete;
-while (!mA_.markers.empty()) {
-visualization_msgs::Marker marker = *mA_.markers.begin();
-mA_.markers.erase(mA_.markers.begin());
-marker.action = visualization_msgs::Marker::DELETE;
-mADelete.markers.push_back(marker);
-}
-publishMarkerArray(mADelete);
+    resetMarkers_mutex.lock();
+    visualization_msgs::MarkerArray mADelete;
+    while (!mA_.markers.empty()) {
+        visualization_msgs::Marker marker = *mA_.markers.begin();
+        mA_.markers.erase(mA_.markers.begin());
+        marker.action = visualization_msgs::Marker::DELETE;
+        mADelete.markers.push_back(marker);
+    }
+    publishMarkerArray(mADelete);
+    resetMarkers_mutex.unlock();
 }
 
 moveit_msgs::DisplayTrajectory ompl_interface::MoveitEGraphInterface::omplNodesToDisplayTraj(
-std::vector<ompl::geometric::EGraphNode*> nodes) {
-moveit_msgs::DisplayTrajectory traj_msg;
-robot_state::RobotState rstate(ssPtr_->getRobotModel());
-robot_trajectory::RobotTrajectory traj(ssPtr_->getRobotModel(),
-    ssPtr_->getJointModelGroup());
-for (size_t i = 0; i < nodes.size(); i++) {
-ssPtr_->copyToRobotState(rstate, nodes[i]->state);
-traj.addSuffixWayPoint(rstate, 0.0);
-}
+        std::vector<ompl::geometric::EGraphNode*> nodes) {
+    moveit_msgs::DisplayTrajectory traj_msg;
+    robot_state::RobotState rstate(ssPtr_->getRobotModel());
+    robot_trajectory::RobotTrajectory traj(ssPtr_->getRobotModel(),
+            ssPtr_->getJointModelGroup());
+    for (size_t i = 0; i < nodes.size(); i++) {
+        ssPtr_->copyToRobotState(rstate, nodes[i]->state);
+        traj.addSuffixWayPoint(rstate, 0.0);
+    }
 
-moveit_msgs::DisplayRobotState state_msg;
-moveit::core::robotStateToRobotStateMsg(rstate, state_msg.state);
+    moveit_msgs::DisplayRobotState state_msg;
+    moveit::core::robotStateToRobotStateMsg(rstate, state_msg.state);
 
-traj_msg.model_id = ssPtr_->getRobotModel()->getName();
-traj_msg.trajectory.resize(1);
-traj.getRobotTrajectoryMsg(traj_msg.trajectory[0]);
-moveit::core::robotStateToRobotStateMsg(traj.getFirstWayPoint(),
-    traj_msg.trajectory_start);
-return traj_msg;
+    traj_msg.model_id = ssPtr_->getRobotModel()->getName();
+    traj_msg.trajectory.resize(1);
+    traj.getRobotTrajectoryMsg(traj_msg.trajectory[0]);
+    moveit::core::robotStateToRobotStateMsg(traj.getFirstWayPoint(),
+            traj_msg.trajectory_start);
+    return traj_msg;
 }
 
 std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::displayTrajToOmplNodes(
-moveit_msgs::DisplayTrajectory traj_msg,
-const ompl::base::SpaceInformationPtr &si) {
-robot_state::RobotState rstate(ssPtr_->getRobotModel());
-std::vector<double> v;
-std::vector<ompl::geometric::EGraphNode*> nodes;
+        moveit_msgs::DisplayTrajectory traj_msg,
+        const ompl::base::SpaceInformationPtr &si) {
+    robot_state::RobotState rstate(ssPtr_->getRobotModel());
+    std::vector<double> v;
+    std::vector<ompl::geometric::EGraphNode*> nodes;
 
- //traverse trajs
-for (size_t i = 0; i < traj_msg.trajectory.size(); i++) {
+    //traverse trajs
+    for (size_t i = 0; i < traj_msg.trajectory.size(); i++) {
 //traverse points on traj
-ompl::geometric::EGraphNode *old_node = NULL;
-for (size_t j = 0; j < traj_msg.trajectory[i].joint_trajectory.points.size();
-        j++) {
-    v = traj_msg.trajectory[i].joint_trajectory.points[j].positions;
-    //traverse joints on point of traj
-    for (size_t k = 0;
-            k < traj_msg.trajectory[i].joint_trajectory.joint_names.size();
-            k++) {
-        rstate.setJointPositions(
-                traj_msg.trajectory[i].joint_trajectory.joint_names[k], &v[k]);
-    }
-    ompl::geometric::EGraphNode *node = new ompl::geometric::EGraphNode(si);
-    ssPtr_->copyToOMPLState(node->state, rstate);
+        ompl::geometric::EGraphNode *old_node = NULL;
+        for (size_t j = 0;
+                j < traj_msg.trajectory[i].joint_trajectory.points.size();
+                j++) {
+            v = traj_msg.trajectory[i].joint_trajectory.points[j].positions;
+            //traverse joints on point of traj
+            for (size_t k = 0;
+                    k
+                            < traj_msg.trajectory[i].joint_trajectory.joint_names.size();
+                    k++) {
+                rstate.setJointPositions(
+                        traj_msg.trajectory[i].joint_trajectory.joint_names[k],
+                        &v[k]);
+            }
+            ompl::geometric::EGraphNode *node = new ompl::geometric::EGraphNode(
+                    si);
+            ssPtr_->copyToOMPLState(node->state, rstate);
 
-    //reconstruct parents and neighbors
-    if (j == 0) {
-        //node->parent = NULL;
-    } else {
-        if (old_node == NULL)
-            ROS_ERROR("old node is null, this should not happen!");
-        //node->parent = old_node;
-        node->neighbors.push_back(old_node);
-        old_node->neighbors.push_back(node);
-    }
+            //reconstruct parents and neighbors
+            if (j == 0) {
+                //node->parent = NULL;
+            } else {
+                if (old_node == NULL)
+                    ROS_ERROR("old node is null, this should not happen!");
+                //node->parent = old_node;
+                node->neighbors.push_back(old_node);
+                old_node->neighbors.push_back(node);
+            }
 
-    old_node = node;
-    nodes.push_back(node);
-}
-}
-return nodes;
+            old_node = node;
+            nodes.push_back(node);
+        }
+    }
+    return nodes;
 }
 
 bool ompl_interface::MoveitEGraphInterface::addGraphToStorage(
-moveit_msgs::DisplayTrajectory display_trajectory, std::string name,
-std::string robot) {
-egraphmsg::EGraphTraj eGraphTraj;
-eGraphTraj.model_id = display_trajectory.model_id;
-eGraphTraj.trajectory_start = display_trajectory.trajectory_start;
-eGraphTraj.trajectory = display_trajectory.trajectory;
-storage_Trajs_->addEGraphTraj(eGraphTraj, name, robot);
-return storage_Trajs_->hasEGraphTraj(name, robot);
+        moveit_msgs::DisplayTrajectory display_trajectory, std::string name,
+        std::string robot) {
+    egraphmsg::EGraphTraj eGraphTraj;
+    eGraphTraj.model_id = display_trajectory.model_id;
+    eGraphTraj.trajectory_start = display_trajectory.trajectory_start;
+    eGraphTraj.trajectory = display_trajectory.trajectory;
+    storage_Trajs_->addEGraphTraj(eGraphTraj, name, robot);
+    return storage_Trajs_->hasEGraphTraj(name, robot);
 }
 
 bool ompl_interface::MoveitEGraphInterface::addTrajToEGraph(
-moveit_msgs::DisplayTrajectory input_trajectory, std::string graph,
-std::string robot) {
-moveit_msgs::DisplayTrajectory traj = getGraphFromStorage(graph, robot);
+        moveit_msgs::DisplayTrajectory input_trajectory, std::string graph,
+        std::string robot) {
+    moveit_msgs::DisplayTrajectory traj = getGraphFromStorage(graph, robot);
 
 //combine traj and input_trajectory
-traj.trajectory.insert(traj.trajectory.end(),
-    input_trajectory.trajectory.begin(), input_trajectory.trajectory.end());
+    traj.trajectory.insert(traj.trajectory.end(),
+            input_trajectory.trajectory.begin(),
+            input_trajectory.trajectory.end());
 
-egraphmsg::EGraphTraj eGraphTraj;
-eGraphTraj.model_id = traj.model_id;
-eGraphTraj.trajectory_start = traj.trajectory_start;
-eGraphTraj.trajectory = traj.trajectory;
-storage_Trajs_->addEGraphTraj(eGraphTraj, graph, robot);
-return storage_Trajs_->hasEGraphTraj(graph, robot);
+    egraphmsg::EGraphTraj eGraphTraj;
+    eGraphTraj.model_id = traj.model_id;
+    eGraphTraj.trajectory_start = traj.trajectory_start;
+    eGraphTraj.trajectory = traj.trajectory;
+    storage_Trajs_->addEGraphTraj(eGraphTraj, graph, robot);
+    return storage_Trajs_->hasEGraphTraj(graph, robot);
 }
 
 moveit_msgs::DisplayTrajectory ompl_interface::MoveitEGraphInterface::getGraphFromStorage(
-std::string name, std::string robot) {
- //ROS_WARN("getGraphFromStorage");
-mongo_ros::MessageWithMetadata<egraphmsg::EGraphTraj>::ConstPtr eGraphTrajMeta;
-storage_Trajs_->getEGraphTraj(eGraphTrajMeta, name, robot);
-moveit_msgs::DisplayTrajectory display_trajectory;
-display_trajectory.model_id = eGraphTrajMeta->model_id;
-display_trajectory.trajectory_start = eGraphTrajMeta->trajectory_start;
-display_trajectory.trajectory = eGraphTrajMeta->trajectory;
-return display_trajectory;
+        std::string name, std::string robot) {
+    //ROS_WARN("getGraphFromStorage");
+    mongo_ros::MessageWithMetadata<egraphmsg::EGraphTraj>::ConstPtr eGraphTrajMeta;
+    storage_Trajs_->getEGraphTraj(eGraphTrajMeta, name, robot);
+    moveit_msgs::DisplayTrajectory display_trajectory;
+    display_trajectory.model_id = eGraphTrajMeta->model_id;
+    display_trajectory.trajectory_start = eGraphTrajMeta->trajectory_start;
+    display_trajectory.trajectory = eGraphTrajMeta->trajectory;
+    return display_trajectory;
 }
 
 #endif
