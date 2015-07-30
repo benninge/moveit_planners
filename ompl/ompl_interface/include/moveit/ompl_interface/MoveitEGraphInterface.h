@@ -1,90 +1,99 @@
-/*********************************************************************
- * Software License Agreement (BSD License)
- *
- *  Copyright (c) 2012, Willow Garage, Inc.
- *  All rights reserved.
- *
- *  Redistribution and use in source and binary forms, with or without
- *  modification, are permitted provided that the following conditions
- *  are met:
- *
- *   * Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer.
- *   * Redistributions in binary form must reproduce the above
- *     copyright notice, this list of conditions and the following
- *     disclaimer in the documentation and/or other materials provided
- *     with the distribution.
- *   * Neither the name of Willow Garage nor the names of its
- *     contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission.
- *
- *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
- *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- *  POSSIBILITY OF SUCH DAMAGE.
- *********************************************************************/
+#ifndef OMPL_GEOMETRIC_PLANNERS_RRT_MoveitEGraphInterface_
+#define OMPL_GEOMETRIC_PLANNERS_RRT_MoveitEGraphInterface_
 
-/* Author: Ioan Sucan */
-
-#ifndef MOVEIT_MOVEIT_WAREHOUSE_EGRAPHTRAJ_STORAGE_
-#define MOVEIT_MOVEIT_WAREHOUSE_EGRAPHTRAJ_STORAGE_
-
+#include <ros/ros.h>
+#include <ompl/geometric/planners/rrt/eGraphPlanner.h>
+#include <ompl/geometric/planners/rrt/BaseEGraphInterface.h>
 #include <moveit/warehouse/moveit_message_storage.h>
-#include <egraphmsg/EGraphTraj.h>
+#include "eGraphTraj_storage.h"
+#include <moveit/robot_state/robot_state.h>
+#include <moveit_msgs/DisplayRobotState.h>
+#include <moveit_msgs/DisplayTrajectory.h>
+#include <moveit_msgs/RobotTrajectory.h>
+#include <moveit/ompl_interface/ompl_interface.h>
+#include <eigen_conversions/eigen_msg.h>
+#include <boost/thread/mutex.hpp>
+#include <limits>
+#include <vector>
+#include <utility>
+
 
 namespace ompl_interface {
 
-typedef mongo_ros::MessageWithMetadata<egraphmsg::EGraphTraj>::ConstPtr EGraphTrajWithMetadata;
-typedef boost::shared_ptr<mongo_ros::MessageCollection<egraphmsg::EGraphTraj> > EGraphTrajCollection;
-
-class EGraphTrajStorage: public moveit_warehouse::MoveItMessageStorage {
+class MoveitEGraphInterface: public ompl::geometric::BaseEGraphInterface {
 public:
+    static MoveitEGraphInterface* getInstance(ModelBasedStateSpacePtr ssPtr) {
+        static MoveitEGraphInterface instance(ssPtr);
+        return &instance;
+    }
 
-	static const std::string DATABASE_NAME;
+    virtual ~MoveitEGraphInterface();
 
-	static const std::string EGRAPH_TRAJ_NAME;
-	static const std::string ROBOT_NAME;
+    virtual std::vector<ompl::geometric::EGraphNode*> load(
+            const ompl::base::SpaceInformationPtr &si);
 
-	/** \brief Initialize the egraph storage to connect to a specified \e host and \e port for the MongoDB.
-	 If defaults are used for the parameters (empty host name, 0 port), the constructor looks for ROS params specifying
-	 which host/port to use. NodeHandle::searchParam() is used starting from ~ to look for warehouse_port and warehouse_host.
-	 If no values are found, the defaults are left to be the ones MongoDB uses.
-	 If \e wait_seconds is above 0, then a maximum number of seconds can elapse until connection is successful, or a runtime exception is thrown. */
-	EGraphTrajStorage(const std::string &host = "localhost",
-			const unsigned int port = 33829, double wait_seconds = 5.0);
-
-	void addEGraphTraj(const egraphmsg::EGraphTraj &msg,
-			const std::string &name, const std::string &robot = "");
-
-	bool hasEGraphTraj(const std::string &name,
-			const std::string &robot = "") const;
-
-	void getAllEGraphTrajs(std::vector<std::string> &names,
-			const std::string &robot = "") const;
-	/** \brief Get the constraints named \e name. Return false on failure. */
-	bool getEGraphTraj(EGraphTrajWithMetadata &msg_m, const std::string &name,
-			const std::string &robot = "") const;
-
-	void removeEGraphTraj(const std::string &name,
-			const std::string &robot = "");
-
-	void reset();
+    virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph,
+            const ompl::base::SpaceInformationPtr &si);
+    virtual void resetEGraph() {
+            mutex.lock();
+            ROS_WARN("storage reset");
+            storage_Trajs_->reset();
+            mutex.unlock();
+    }
+    virtual void resetMarkers();
 
 private:
+    void draw();
+    MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
-	void createCollections();
+    MoveitEGraphInterface(MoveitEGraphInterface const&); //dont implement
+    void operator=(MoveitEGraphInterface const&); //dont implement
 
-	EGraphTrajCollection egraphTraj_collection_;
+    moveit_msgs::DisplayTrajectory omplNodesToDisplayTraj(
+            std::vector<ompl::geometric::EGraphNode*> nodes);
+    std::vector<ompl::geometric::EGraphNode*> displayTrajToOmplNodes(
+            moveit_msgs::DisplayTrajectory traj_msg,
+            const ompl::base::SpaceInformationPtr &si);
+    bool addGraphToStorage(moveit_msgs::DisplayTrajectory display_trajectory,
+            std::string name, std::string robot);
+    bool addTrajToEGraph(moveit_msgs::DisplayTrajectory input_trajectory,
+            std::string graph, std::string robot);
+    moveit_msgs::DisplayTrajectory getGraphFromStorage(std::string name,
+            std::string robot);
 
+    void eGraphToMarkerArray(moveit_msgs::DisplayTrajectory display_trajectory,
+            robot_model::RobotModelConstPtr &robot_model, int color_scheme);
+    void trajToMarkerArray(moveit_msgs::RobotTrajectory trajectory,
+            robot_model::RobotModelConstPtr &robot_model, int color_scheme);
+    void nodeToMarkerArray(double x, double y, double z, float red, float green,
+            float blue, float alpha);
+    void publishMarkerArray(visualization_msgs::MarkerArray mA) {
+        while (markerArray_pub_.getNumSubscribers() < 1) {
+            ROS_WARN("Please create a subscriber to visualization_marker_array");
+            sleep(1);
+            ROS_WARN_ONCE("Subscriber found");
+        }
+        markerArray_pub_.publish(mA);
+    }
+    geometry_msgs::Pose transformPose(
+            const Eigen::Affine3d end_effector_state) {
+        geometry_msgs::Pose pose;
+        tf::poseEigenToMsg(end_effector_state, pose);
+        return pose;
+    }
+
+    EGraphTrajStorage* storage_Trajs_;
+
+    ros::NodeHandle nh_;
+    //TODO: change to improve threaded behaviour?
+    visualization_msgs::MarkerArray mA_;
+    ros::Publisher markerArray_pub_;
+    int id_;
+    ModelBasedStateSpacePtr ssPtr_;
+   boost::mutex mutex;
+   boost::mutex resetMarkers_mutex;
 };
+
 }
 
 #endif
