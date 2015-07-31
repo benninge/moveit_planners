@@ -35,7 +35,6 @@ void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(
             drawEdge(robot_nodes[i], robot_nodes[robot_nodes[i].neighbors[j]]);
         }
     }
-    //TODO: draw line_strips
     publishMarkerArray(mA_);
 }
 void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2) {
@@ -54,18 +53,19 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
     geometry_msgs::Point p1;
     geometry_msgs::Point p2;
 
-    robot_state::RobotState rstate(ssPtr_->getRobotModel());
-    moveit::core::robotStateMsgToRobotState(node1.robotstate, rstate);
+    robot_state::RobotState rstate1(ssPtr_->getRobotModel());
+    moveit::core::robotStateMsgToRobotState(node1.robotstate, rstate1);
 
     const Eigen::Affine3d &end_effector_state1 =
-                    rstate.getGlobalLinkTransform("lwr_joint7_frame");
+                    rstate1.getGlobalLinkTransform("lwr_joint7_frame");
     geometry_msgs::Pose pose1 = transformPose(end_effector_state1);
     p1.x = pose1.position.x;
     p1.y = pose1.position.y;
     p1.z = pose1.position.z;
-    moveit::core::robotStateMsgToRobotState(node2.robotstate, rstate);
+    robot_state::RobotState rstate2(ssPtr_->getRobotModel());
+    moveit::core::robotStateMsgToRobotState(node2.robotstate, rstate2);
     const Eigen::Affine3d &end_effector_state2 =
-                    rstate.getGlobalLinkTransform("lwr_joint7_frame");
+                    rstate2.getGlobalLinkTransform("lwr_joint7_frame");
     geometry_msgs::Pose pose2 = transformPose(end_effector_state2);
     p2.x = pose2.position.x;
     p2.y = pose2.position.y;
