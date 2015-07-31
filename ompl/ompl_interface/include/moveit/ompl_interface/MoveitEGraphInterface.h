@@ -5,7 +5,7 @@
 #include <ompl/geometric/planners/rrt/eGraphPlanner.h>
 #include <ompl/geometric/planners/rrt/BaseEGraphInterface.h>
 #include <moveit/warehouse/moveit_message_storage.h>
-#include "eGraphTraj_storage.h"
+#include "eGraph_storage.h"
 #include <moveit/robot_state/robot_state.h>
 #include <moveit_msgs/DisplayRobotState.h>
 #include <moveit_msgs/DisplayTrajectory.h>
@@ -37,7 +37,7 @@ public:
     virtual void resetEGraph() {
             mutex.lock();
             ROS_WARN("storage reset");
-            storage_Trajs_->reset();
+            eGraph_storage_->reset();
             mutex.unlock();
     }
     virtual void resetMarkers();
@@ -49,21 +49,20 @@ private:
     MoveitEGraphInterface(MoveitEGraphInterface const&); //dont implement
     void operator=(MoveitEGraphInterface const&); //dont implement
 
-    moveit_msgs::DisplayTrajectory omplNodesToDisplayTraj(
+    std::vector<egraphmsg::RobotStateNode> omplNodesToRobotStateNodes(
             std::vector<ompl::geometric::EGraphNode*> nodes);
-    std::vector<ompl::geometric::EGraphNode*> displayTrajToOmplNodes(
-            moveit_msgs::DisplayTrajectory traj_msg,
+    std::vector<ompl::geometric::EGraphNode*> robotStateNodesToOmplNodes(
+            std::vector<egraphmsg::RobotStateNode> robot_nodes,
             const ompl::base::SpaceInformationPtr &si);
-    bool addGraphToStorage(moveit_msgs::DisplayTrajectory display_trajectory,
+    bool addGraphToStorage(std::vector<egraphmsg::RobotStateNode> input_nodes,
             std::string name, std::string robot);
-    bool addTrajToEGraph(moveit_msgs::DisplayTrajectory input_trajectory,
-            std::string graph, std::string robot);
-    moveit_msgs::DisplayTrajectory getGraphFromStorage(std::string name,
+    std::vector<egraphmsg::RobotStateNode> getGraphFromStorage(std::string name,
             std::string robot);
+    void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2);
 
-    void eGraphToMarkerArray(moveit_msgs::DisplayTrajectory display_trajectory,
+    void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes,
             robot_model::RobotModelConstPtr &robot_model, int color_scheme);
-    void trajToMarkerArray(moveit_msgs::RobotTrajectory trajectory,
+    void robotNodeToMarkerArray(egraphmsg::RobotStateNode node,
             robot_model::RobotModelConstPtr &robot_model, int color_scheme);
     void nodeToMarkerArray(double x, double y, double z, float red, float green,
             float blue, float alpha);
@@ -82,7 +81,7 @@ private:
         return pose;
     }
 
-    EGraphTrajStorage* storage_Trajs_;
+    EGraphStorage* eGraph_storage_;
 
     ros::NodeHandle nh_;
     //TODO: change to improve threaded behaviour?
