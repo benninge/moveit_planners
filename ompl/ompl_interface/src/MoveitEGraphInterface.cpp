@@ -30,14 +30,23 @@ void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(
         robot_model::RobotModelConstPtr &robot_model, int color_scheme) {
 
     for (int i = 0; i < robot_nodes.size(); i++) {
-        robotNodeToMarkerArray(robot_nodes[i], robot_model, color_scheme);
-        for (int j = 0; j < robot_nodes[i].neighbors.size(); j++) {
-            drawEdge(robot_nodes[i], robot_nodes[robot_nodes[i].neighbors[j]]);
+        if (robot_nodes[i].solution_path) {
+            robotNodeToMarkerArray(robot_nodes[i], robot_model, 2);
+        } else {
+            robotNodeToMarkerArray(robot_nodes[i], robot_model, 1);
         }
+        for (int j = 0; j < robot_nodes[i].neighbors.size(); j++) {
+               if (robot_nodes[i].solution_path && robot_nodes[robot_nodes[i].neighbors[j]].solution_path) {
+                   drawEdge(robot_nodes[i],robot_nodes[robot_nodes[i].neighbors[j]], 2);
+               } else {
+                   drawEdge(robot_nodes[i],robot_nodes[robot_nodes[i].neighbors[j]], 1);
+               }
+                    }
     }
     publishMarkerArray(mA_);
 }
-void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2) {
+void ompl_interface::MoveitEGraphInterface::drawEdge(
+        egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme) {
     visualization_msgs::Marker marker;
     marker.header.frame_id = "/world";
     marker.type = visualization_msgs::Marker::LINE_STRIP;
@@ -46,26 +55,33 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
     marker.id = id_++;
     marker.lifetime = ros::Duration();
     marker.scale.x = 0.01;
-    marker.color.r = 1.0f;
-    marker.color.g = 0.0f;
-    marker.color.b = 0.0f;
-    marker.color.a = 1.0;
+    if (color_scheme == 1) {
+        marker.color.r = 1.0f;
+        marker.color.g = 0.0f;
+        marker.color.b = 0.0f;
+        marker.color.a = 0.5f;
+    } else {
+        marker.color.r = 0.0f;
+        marker.color.g = 1.0f;
+        marker.color.b = 0.0f;
+        marker.color.a = 1.0f;
+    }
     geometry_msgs::Point p1;
     geometry_msgs::Point p2;
 
     robot_state::RobotState rstate1(ssPtr_->getRobotModel());
     moveit::core::robotStateMsgToRobotState(node1.robotstate, rstate1);
 
-    const Eigen::Affine3d &end_effector_state1 =
-                    rstate1.getGlobalLinkTransform("lwr_joint7_frame");
+    const Eigen::Affine3d &end_effector_state1 = rstate1.getGlobalLinkTransform(
+            "lwr_joint7_frame");
     geometry_msgs::Pose pose1 = transformPose(end_effector_state1);
     p1.x = pose1.position.x;
     p1.y = pose1.position.y;
     p1.z = pose1.position.z;
     robot_state::RobotState rstate2(ssPtr_->getRobotModel());
     moveit::core::robotStateMsgToRobotState(node2.robotstate, rstate2);
-    const Eigen::Affine3d &end_effector_state2 =
-                    rstate2.getGlobalLinkTransform("lwr_joint7_frame");
+    const Eigen::Affine3d &end_effector_state2 = rstate2.getGlobalLinkTransform(
+            "lwr_joint7_frame");
     geometry_msgs::Pose pose2 = transformPose(end_effector_state2);
     p2.x = pose2.position.x;
     p2.y = pose2.position.y;
@@ -83,12 +99,17 @@ void ompl_interface::MoveitEGraphInterface::robotNodeToMarkerArray(
 
     //moveit::core::RobotStatePtr kinematic_state(rstate);
 
-
-    const Eigen::Affine3d &end_effector_state =
-                    rstate.getGlobalLinkTransform("lwr_joint7_frame");
+    const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform(
+            "lwr_joint7_frame");
     geometry_msgs::Pose pose = transformPose(end_effector_state);
-    nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
-                        0.0f, 0.0f, 1.0f, 0.5f);
+    if (color_scheme == 1) {
+        nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
+                0.0f, 0.0f, 1.0f, 0.5f);
+    } else if (color_scheme == 2) {
+        nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z,
+                0.0f, 1.0f, 0.0f, 1.0f);
+    }
+
 }
 
 void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x,
@@ -126,18 +147,15 @@ void ompl_interface::MoveitEGraphInterface::save(
 
     bool b1 = addGraphToStorage(robot_nodes, "graph", "robot");
     ROS_WARN("graph add success?: " + b1 ? "true" : "false");
-    draw();
+    draw(robot_nodes);
     mutex.unlock();
 }
 
-void ompl_interface::MoveitEGraphInterface::draw() {
-    if (eGraph_storage_->hasEGraph("graph", "robot") == true) {
-        std::vector<egraphmsg::RobotStateNode> robot_nodes =
-                getGraphFromStorage("graph", "robot");
-        robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
-        resetMarkers();
-        robotNodesToMarkerArray(robot_nodes, robot_model, 1);
-    }
+void ompl_interface::MoveitEGraphInterface::draw(
+        std::vector<egraphmsg::RobotStateNode> robot_nodes) {
+    robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
+    resetMarkers();
+    robotNodesToMarkerArray(robot_nodes, robot_model, 1);
 }
 
 std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::load(
@@ -181,6 +199,7 @@ std::vector<egraphmsg::RobotStateNode> ompl_interface::MoveitEGraphInterface::om
         moveit_msgs::RobotState rstatemsg;
         moveit::core::robotStateToRobotStateMsg(rstate, rstatemsg);
         rstate_node.robotstate = rstatemsg;
+        rstate_node.solution_path = nodes[i]->solution_path;
         for (size_t j = 0; j < nodes[i]->neighbors.size(); j++) {
             if (nodes[i]->neighbors[j]->id == -1)
                 ROS_ERROR("node id is -1");
@@ -223,7 +242,7 @@ bool ompl_interface::MoveitEGraphInterface::addGraphToStorage(
         std::vector<egraphmsg::RobotStateNode> input_nodes, std::string name,
         std::string robot) {
     egraphmsg::EGraph eGraph;
-        eGraph.nodes = input_nodes;
+    eGraph.nodes = input_nodes;
     eGraph_storage_->addEGraph(eGraph, name, robot);
     return eGraph_storage_->hasEGraph(name, robot);
 }

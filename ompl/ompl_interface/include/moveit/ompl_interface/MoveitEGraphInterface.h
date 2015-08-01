@@ -43,7 +43,7 @@ public:
     virtual void resetMarkers();
 
 private:
-    void draw();
+    void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes);
     MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
     MoveitEGraphInterface(MoveitEGraphInterface const&); //dont implement
@@ -58,7 +58,7 @@ private:
             std::string name, std::string robot);
     std::vector<egraphmsg::RobotStateNode> getGraphFromStorage(std::string name,
             std::string robot);
-    void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2);
+    void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme);
 
     void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes,
             robot_model::RobotModelConstPtr &robot_model, int color_scheme);
