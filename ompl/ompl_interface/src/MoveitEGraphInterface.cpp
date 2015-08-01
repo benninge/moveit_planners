@@ -16,8 +16,9 @@ ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface(
     //init Storage
     eGraph_storage_ = new ompl_interface::EGraphStorage();
     ssPtr_ = ssPtr;
+    //robot_model_ = ssPtr_->getRobotModel();
     markerArray_pub_ = nh_.advertise<visualization_msgs::MarkerArray>(
-            "visualization_marker_array", 5);
+            "visualization_marker_array", 1000);
     resetEGraph();
 }
 
@@ -27,13 +28,13 @@ ompl_interface::MoveitEGraphInterface::~MoveitEGraphInterface() {
 
 void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(
         std::vector<egraphmsg::RobotStateNode> robot_nodes,
-        robot_model::RobotModelConstPtr &robot_model, int color_scheme) {
+         int color_scheme) {
 
     for (int i = 0; i < robot_nodes.size(); i++) {
         if (robot_nodes[i].solution_path) {
-            robotNodeToMarkerArray(robot_nodes[i], robot_model, 2);
+            robotNodeToMarkerArray(robot_nodes[i], 2);
         } else {
-            robotNodeToMarkerArray(robot_nodes[i], robot_model, 1);
+            robotNodeToMarkerArray(robot_nodes[i], 1);
         }
         for (int j = 0; j < robot_nodes[i].neighbors.size(); j++) {
                if (robot_nodes[i].solution_path && robot_nodes[robot_nodes[i].neighbors[j]].solution_path) {
@@ -53,6 +54,7 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(
     marker.action = visualization_msgs::Marker::ADD;
     marker.ns = "basic_shapes";
     marker.id = id_++;
+    //ROS_WARN("marker id: %d", id_);
     marker.lifetime = ros::Duration();
     marker.scale.x = 0.01;
     if (color_scheme == 1) {
@@ -70,6 +72,7 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(
     geometry_msgs::Point p2;
 
     robot_state::RobotState rstate1(ssPtr_->getRobotModel());
+    rstate1.setToDefaultValues();
     moveit::core::robotStateMsgToRobotState(node1.robotstate, rstate1);
 
     const Eigen::Affine3d &end_effector_state1 = rstate1.getGlobalLinkTransform(
@@ -78,7 +81,9 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(
     p1.x = pose1.position.x;
     p1.y = pose1.position.y;
     p1.z = pose1.position.z;
+
     robot_state::RobotState rstate2(ssPtr_->getRobotModel());
+    rstate2.setToDefaultValues();
     moveit::core::robotStateMsgToRobotState(node2.robotstate, rstate2);
     const Eigen::Affine3d &end_effector_state2 = rstate2.getGlobalLinkTransform(
             "lwr_joint7_frame");
@@ -93,11 +98,11 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(
 
 void ompl_interface::MoveitEGraphInterface::robotNodeToMarkerArray(
         egraphmsg::RobotStateNode node,
-        robot_model::RobotModelConstPtr &robot_model, int color_scheme) {
+         int color_scheme) {
     robot_state::RobotState rstate(ssPtr_->getRobotModel());
+    rstate.setToDefaultValues();
     moveit::core::robotStateMsgToRobotState(node.robotstate, rstate);
-
-    //moveit::core::RobotStatePtr kinematic_state(rstate);
+    //moveit::core::RobotStatePtr kinematic_state(new robot_state::RobotState(rstate));
 
     const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform(
             "lwr_joint7_frame");
@@ -119,6 +124,7 @@ void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x,
     marker.type = visualization_msgs::Marker::SPHERE;
     marker.ns = "basic_shapes";
     marker.id = id_++;
+    //ROS_WARN("marker id: %d", id_);
     marker.lifetime = ros::Duration();
     marker.action = visualization_msgs::Marker::ADD;
 
@@ -126,9 +132,9 @@ void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x,
     marker.pose.position.y = y;
     marker.pose.position.z = z;
     marker.pose.orientation.w = 1.0;
-    marker.scale.x = 0.05;
-    marker.scale.y = 0.05;
-    marker.scale.z = 0.05;
+    marker.scale.x = 0.03;
+    marker.scale.y = 0.03;
+    marker.scale.z = 0.03;
     marker.color.r = red;
     marker.color.g = green;
     marker.color.b = blue;
@@ -141,10 +147,8 @@ void ompl_interface::MoveitEGraphInterface::save(
         std::vector<ompl::geometric::EGraphNode*> eGraph,
         const ompl::base::SpaceInformationPtr &si) {
     mutex.lock();
-
     std::vector<egraphmsg::RobotStateNode> robot_nodes =
             omplNodesToRobotStateNodes(eGraph);
-
     bool b1 = addGraphToStorage(robot_nodes, "graph", "robot");
     ROS_WARN("graph add success?: " + b1 ? "true" : "false");
     draw(robot_nodes);
@@ -153,9 +157,8 @@ void ompl_interface::MoveitEGraphInterface::save(
 
 void ompl_interface::MoveitEGraphInterface::draw(
         std::vector<egraphmsg::RobotStateNode> robot_nodes) {
-    robot_model::RobotModelConstPtr robot_model = ssPtr_->getRobotModel();
-    resetMarkers();
-    robotNodesToMarkerArray(robot_nodes, robot_model, 1);
+    //resetMarkers();
+    robotNodesToMarkerArray(robot_nodes, 1);
 }
 
 std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::load(

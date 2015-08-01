@@ -35,19 +35,21 @@ public:
     virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph,
             const ompl::base::SpaceInformationPtr &si);
     virtual void resetEGraph() {
-            mutex.lock();
+            //mutex.lock();
             ROS_WARN("storage reset");
             eGraph_storage_->reset();
-            mutex.unlock();
+            //mutex.unlock();
     }
     virtual void resetMarkers();
+
+    //MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
 private:
     void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes);
     MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
-    MoveitEGraphInterface(MoveitEGraphInterface const&); //dont implement
-    void operator=(MoveitEGraphInterface const&); //dont implement
+    MoveitEGraphInterface(MoveitEGraphInterface const&);
+    void operator=(MoveitEGraphInterface const&);
 
     std::vector<egraphmsg::RobotStateNode> omplNodesToRobotStateNodes(
             std::vector<ompl::geometric::EGraphNode*> nodes);
@@ -61,9 +63,9 @@ private:
     void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme);
 
     void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes,
-            robot_model::RobotModelConstPtr &robot_model, int color_scheme);
+             int color_scheme);
     void robotNodeToMarkerArray(egraphmsg::RobotStateNode node,
-            robot_model::RobotModelConstPtr &robot_model, int color_scheme);
+             int color_scheme);
     void nodeToMarkerArray(double x, double y, double z, float red, float green,
             float blue, float alpha);
     void publishMarkerArray(visualization_msgs::MarkerArray mA) {
@@ -91,6 +93,7 @@ private:
     ModelBasedStateSpacePtr ssPtr_;
    boost::mutex mutex;
    boost::mutex resetMarkers_mutex;
+   //robot_model::RobotModelConstPtr robot_model_;
 };
 
 }
