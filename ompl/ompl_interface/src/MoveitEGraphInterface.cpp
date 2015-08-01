@@ -157,7 +157,7 @@ void ompl_interface::MoveitEGraphInterface::save(
 
 void ompl_interface::MoveitEGraphInterface::draw(
         std::vector<egraphmsg::RobotStateNode> robot_nodes) {
-    //resetMarkers();
+    resetMarkers();
     robotNodesToMarkerArray(robot_nodes, 1);
 }
 
