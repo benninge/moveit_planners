@@ -5,6 +5,7 @@ add_library(${MOVEIT_LIB_NAME}
   src/planning_context_manager.cpp
   src/MoveitEGraphInterface.cpp
   src/eGraphTraj_storage.cpp
+  src/eGraph_storage.cpp
   src/constraints_library.cpp
   src/model_based_planning_context.cpp
   src/parameterization/model_based_state_space.cpp
