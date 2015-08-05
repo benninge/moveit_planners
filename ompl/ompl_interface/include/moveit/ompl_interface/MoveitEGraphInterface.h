@@ -17,83 +17,79 @@
 #include <vector>
 #include <utility>
 
+namespace ompl_interface
+{
 
-namespace ompl_interface {
-
-class MoveitEGraphInterface: public ompl::geometric::BaseEGraphInterface {
+class MoveitEGraphInterface : public ompl::geometric::BaseEGraphInterface
+{
 public:
-    static MoveitEGraphInterface* getInstance(ModelBasedStateSpacePtr ssPtr) {
-        static MoveitEGraphInterface instance(ssPtr);
-        return &instance;
-    }
+  static MoveitEGraphInterface* getInstance(ModelBasedStateSpacePtr ssPtr)
+  {
+    static MoveitEGraphInterface instance(ssPtr);
+    return &instance;
+  }
 
-    virtual ~MoveitEGraphInterface();
+  virtual ~MoveitEGraphInterface();
 
-    virtual std::vector<ompl::geometric::EGraphNode*> load(
-            const ompl::base::SpaceInformationPtr &si);
+  virtual std::vector<ompl::geometric::EGraphNode*> load(const ompl::base::SpaceInformationPtr &si);
 
-    virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph,
-            const ompl::base::SpaceInformationPtr &si);
-    virtual void resetEGraph() {
-            //mutex.lock();
-            ROS_WARN("storage reset");
-            eGraph_storage_->reset();
-            //mutex.unlock();
-    }
-    virtual void resetMarkers();
+  virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph, const ompl::base::SpaceInformationPtr &si);
+  virtual void resetEGraph()
+  {
+    //mutex.lock();
+    ROS_WARN("storage reset");
+    eGraph_storage_->reset();
+    //mutex.unlock();
+  }
+  virtual void resetMarkers();
 
-    //MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
+  //MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
 private:
-    void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes);
-    MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
+  void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes);
+  MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 
-    MoveitEGraphInterface(MoveitEGraphInterface const&);
-    void operator=(MoveitEGraphInterface const&);
+  MoveitEGraphInterface(MoveitEGraphInterface const&);
+  void operator=(MoveitEGraphInterface const&);
 
-    std::vector<egraphmsg::RobotStateNode> omplNodesToRobotStateNodes(
-            std::vector<ompl::geometric::EGraphNode*> nodes);
-    std::vector<ompl::geometric::EGraphNode*> robotStateNodesToOmplNodes(
-            std::vector<egraphmsg::RobotStateNode> robot_nodes,
-            const ompl::base::SpaceInformationPtr &si);
-    bool addGraphToStorage(std::vector<egraphmsg::RobotStateNode> input_nodes,
-            std::string name, std::string robot);
-    std::vector<egraphmsg::RobotStateNode> getGraphFromStorage(std::string name,
-            std::string robot);
-    void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme);
+  std::vector<egraphmsg::RobotStateNode> omplNodesToRobotStateNodes(std::vector<ompl::geometric::EGraphNode*> nodes);
+  std::vector<ompl::geometric::EGraphNode*> robotStateNodesToOmplNodes(
+      std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
+  bool addGraphToStorage(std::vector<egraphmsg::RobotStateNode> input_nodes, std::string name, std::string robot);
+  std::vector<egraphmsg::RobotStateNode> getGraphFromStorage(std::string name, std::string robot);
+  void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme);
 
-    void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes,
-             int color_scheme);
-    void robotNodeToMarkerArray(egraphmsg::RobotStateNode node,
-             int color_scheme);
-    void nodeToMarkerArray(double x, double y, double z, float red, float green,
-            float blue, float alpha);
-    void publishMarkerArray(visualization_msgs::MarkerArray mA) {
-        while (markerArray_pub_.getNumSubscribers() < 1) {
-            ROS_WARN("Please create a subscriber to visualization_marker_array");
-            sleep(1);
-            ROS_WARN_ONCE("Subscriber found");
-        }
-        markerArray_pub_.publish(mA);
+  void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes, int color_scheme);
+  void robotNodeToMarkerArray(egraphmsg::RobotStateNode node, int color_scheme);
+  void nodeToMarkerArray(double x, double y, double z, float red, float green, float blue, float alpha);
+  void publishMarkerArray(visualization_msgs::MarkerArray mA)
+  {
+    while (markerArray_pub_.getNumSubscribers() < 1)
+    {
+      ROS_WARN_ONCE("Please create a subscriber to visualization_marker_array");
+      sleep(0.01);
     }
-    geometry_msgs::Pose transformPose(
-            const Eigen::Affine3d end_effector_state) {
-        geometry_msgs::Pose pose;
-        tf::poseEigenToMsg(end_effector_state, pose);
-        return pose;
-    }
+    ROS_WARN_ONCE("Subscriber found");
+    markerArray_pub_.publish(mA);
+  }
+  geometry_msgs::Pose transformPose(const Eigen::Affine3d end_effector_state)
+  {
+    geometry_msgs::Pose pose;
+    tf::poseEigenToMsg(end_effector_state, pose);
+    return pose;
+  }
 
-    EGraphStorage* eGraph_storage_;
+  EGraphStorage* eGraph_storage_;
 
-    ros::NodeHandle nh_;
-    //TODO: change to improve threaded behaviour?
-    visualization_msgs::MarkerArray mA_;
-    ros::Publisher markerArray_pub_;
-    int id_;
-    ModelBasedStateSpacePtr ssPtr_;
-   boost::mutex mutex;
-   boost::mutex resetMarkers_mutex;
-   //robot_model::RobotModelConstPtr robot_model_;
+  ros::NodeHandle nh_;
+  //TODO: change to improve threaded behaviour?
+  visualization_msgs::MarkerArray mA_;
+  ros::Publisher markerArray_pub_;
+  int id_;
+  ModelBasedStateSpacePtr ssPtr_;
+  boost::mutex mutex;
+  boost::mutex resetMarkers_mutex;
+  //robot_model::RobotModelConstPtr robot_model_;
 };
 
 }
