@@ -26,8 +26,7 @@ ompl_interface::MoveitEGraphInterface::~MoveitEGraphInterface()
 
 }
 
-void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes,
-                                                                    int color_scheme)
+void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes)
 {
 
   for (int i = 0; i < robot_nodes.size(); i++)
@@ -108,7 +107,7 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
   rstate1.setToDefaultValues();
   moveit::core::robotStateMsgToRobotState(node1.robotstate, rstate1);
 
-  const Eigen::Affine3d &end_effector_state1 = rstate1.getGlobalLinkTransform("lwr_joint7_frame");
+  const Eigen::Affine3d &end_effector_state1 = rstate1.getGlobalLinkTransform("lbr_7_link");
   geometry_msgs::Pose pose1 = transformPose(end_effector_state1);
   p1.x = pose1.position.x;
   p1.y = pose1.position.y;
@@ -117,7 +116,7 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
   robot_state::RobotState rstate2(ssPtr_->getRobotModel());
   rstate2.setToDefaultValues();
   moveit::core::robotStateMsgToRobotState(node2.robotstate, rstate2);
-  const Eigen::Affine3d &end_effector_state2 = rstate2.getGlobalLinkTransform("lwr_joint7_frame");
+  const Eigen::Affine3d &end_effector_state2 = rstate2.getGlobalLinkTransform("lbr_7_link");
   geometry_msgs::Pose pose2 = transformPose(end_effector_state2);
   p2.x = pose2.position.x;
   p2.y = pose2.position.y;
@@ -132,9 +131,8 @@ void ompl_interface::MoveitEGraphInterface::robotNodeToMarkerArray(egraphmsg::Ro
   robot_state::RobotState rstate(ssPtr_->getRobotModel());
   rstate.setToDefaultValues();
   moveit::core::robotStateMsgToRobotState(node.robotstate, rstate);
-  //moveit::core::RobotStatePtr kinematic_state(new robot_state::RobotState(rstate));
 
-  const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lwr_joint7_frame");
+  const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
   geometry_msgs::Pose pose = transformPose(end_effector_state);
   if (color_scheme == 1)
   {
@@ -183,6 +181,7 @@ void ompl_interface::MoveitEGraphInterface::save(std::vector<ompl::geometric::EG
 {
   mutex.lock();
   std::vector<egraphmsg::RobotStateNode> robot_nodes = omplNodesToRobotStateNodes(eGraph);
+  //resetEGraph();
   bool b1 = addGraphToStorage(robot_nodes, "graph", "robot");
   ROS_WARN("graph add success?: " + b1 ? "true" : "false");
   draw(robot_nodes);
@@ -191,8 +190,8 @@ void ompl_interface::MoveitEGraphInterface::save(std::vector<ompl::geometric::EG
 
 void ompl_interface::MoveitEGraphInterface::draw(std::vector<egraphmsg::RobotStateNode> robot_nodes)
 {
-  resetMarkers();
-  robotNodesToMarkerArray(robot_nodes, 1);
+  //resetMarkers();
+  robotNodesToMarkerArray(robot_nodes);
 }
 
 std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::load(
