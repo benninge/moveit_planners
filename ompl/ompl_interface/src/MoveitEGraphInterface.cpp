@@ -9,14 +9,11 @@
 #include <moveit/robot_state/conversions.h>
 #include <egraphmsg/RobotStateNode.h>
 
-ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr) :
+ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface() :
     nh_("~"), id_(0)
 {
-
   //init Storage
   eGraph_storage_ = new ompl_interface::EGraphStorage();
-  ssPtr_ = ssPtr;
-  //robot_model_ = ssPtr_->getRobotModel();
   markerArray_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1000);
   resetEGraph();
 }
@@ -67,6 +64,12 @@ void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(std::vector<
   }
   publishMarkerArray(mA_);
 }
+
+void ompl_interface::MoveitEGraphInterface::setStateSpace(ModelBasedStateSpacePtr ssPtr)
+{
+  ssPtr_ = ssPtr;
+}
+
 void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2,
                                                      int color_scheme)
 {
@@ -184,13 +187,13 @@ void ompl_interface::MoveitEGraphInterface::save(std::vector<ompl::geometric::EG
   //resetEGraph();
   bool b1 = addGraphToStorage(robot_nodes, "graph", "robot");
   ROS_WARN("graph add success?: " + b1 ? "true" : "false");
+  resetMarkers();
   draw(robot_nodes);
   mutex.unlock();
 }
 
 void ompl_interface::MoveitEGraphInterface::draw(std::vector<egraphmsg::RobotStateNode> robot_nodes)
 {
-  //resetMarkers();
   robotNodesToMarkerArray(robot_nodes);
 }
 
@@ -233,11 +236,20 @@ std::vector<egraphmsg::RobotStateNode> ompl_interface::MoveitEGraphInterface::om
     std::vector<ompl::geometric::EGraphNode*> nodes)
 {
   std::vector<egraphmsg::RobotStateNode> robot_nodes;
-  robot_state::RobotState rstate(ssPtr_->getRobotModel());
+  //robot_state::RobotState rstate(ssPtr_->getRobotModel());
   int32_t test;
   for (size_t i = 0; i < nodes.size(); i++)
   {
+    robot_state::RobotState rstate(ssPtr_->getRobotModel());
+    rstate.setToDefaultValues();
     ssPtr_->copyToRobotState(rstate, nodes[i]->state);
+
+    //DEBUG
+    if (i == 0) {
+    const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
+    geometry_msgs::Pose pose = transformPose(end_effector_state);
+    ROS_ERROR("save DEBUG: node %p, pos xyz: %f, %f, %f", nodes[i], pose.position.x, pose.position.y, pose.position.z); }
+
     egraphmsg::RobotStateNode rstate_node;
     moveit_msgs::RobotState rstatemsg;
     moveit::core::robotStateToRobotStateMsg(rstate, rstatemsg);
@@ -261,12 +273,21 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
 {
 
   std::vector<ompl::geometric::EGraphNode*> nodes;
-  robot_state::RobotState rstate(ssPtr_->getRobotModel());
   //traverse robot nodes
   for (size_t i = 0; i < robot_nodes.size(); i++)
   {
+    robot_state::RobotState rstate(ssPtr_->getRobotModel());
+    rstate.setToDefaultValues();
+
     ompl::geometric::EGraphNode *node = new ompl::geometric::EGraphNode(si);
     moveit::core::robotStateMsgToRobotState(robot_nodes[i].robotstate, rstate);
+
+    //DEBUG
+    if (i == 0) {
+    const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
+    geometry_msgs::Pose pose = transformPose(end_effector_state);
+    ROS_ERROR("load DEBUG: node %p, pos xyz: %f, %f, %f", node, pose.position.x, pose.position.y, pose.position.z); }
+
     ssPtr_->copyToOMPLState(node->state, rstate);
     node->id = i;
     node->saved = true;

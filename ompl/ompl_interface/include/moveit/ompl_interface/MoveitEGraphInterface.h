@@ -23,9 +23,9 @@ namespace ompl_interface
 class MoveitEGraphInterface : public ompl::geometric::BaseEGraphInterface
 {
 public:
-  static MoveitEGraphInterface* getInstance(ModelBasedStateSpacePtr ssPtr)
+  static MoveitEGraphInterface* getInstance()
   {
-    static MoveitEGraphInterface instance(ssPtr);
+    static MoveitEGraphInterface instance;
     return &instance;
   }
 
@@ -42,12 +42,12 @@ public:
     //mutex.unlock();
   }
   virtual void resetMarkers();
+  virtual void setStateSpace(ModelBasedStateSpacePtr ssPtr);
 
   //MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
-
 private:
   void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes);
-  MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
+  MoveitEGraphInterface();
 
   MoveitEGraphInterface(MoveitEGraphInterface const&);
   void operator=(MoveitEGraphInterface const&);
@@ -88,7 +88,6 @@ private:
   ModelBasedStateSpacePtr ssPtr_;
   boost::mutex mutex;
   boost::mutex resetMarkers_mutex;
-  //robot_model::RobotModelConstPtr robot_model_;
 };
 
 }
