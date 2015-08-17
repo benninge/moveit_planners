@@ -20,7 +20,7 @@ ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface() :
 
 ompl_interface::MoveitEGraphInterface::~MoveitEGraphInterface()
 {
-
+  delete eGraph_storage_;
 }
 
 void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes)
