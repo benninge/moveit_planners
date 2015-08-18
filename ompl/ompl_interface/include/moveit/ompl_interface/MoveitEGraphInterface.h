@@ -46,7 +46,7 @@ public:
 
   //MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 private:
-  void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes);
+  void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
   MoveitEGraphInterface();
 
   MoveitEGraphInterface(MoveitEGraphInterface const&);
@@ -57,9 +57,9 @@ private:
       std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
   bool addGraphToStorage(std::vector<egraphmsg::RobotStateNode> input_nodes, std::string name, std::string robot);
   std::vector<egraphmsg::RobotStateNode> getGraphFromStorage(std::string name, std::string robot);
-  void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme);
+  void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme, const ompl::base::SpaceInformationPtr &si);
 
-  void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes);
+  void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
   void robotNodeToMarkerArray(egraphmsg::RobotStateNode node, int color_scheme);
   void nodeToMarkerArray(double x, double y, double z, float red, float green, float blue, float alpha);
   void publishMarkerArray(visualization_msgs::MarkerArray mA)
