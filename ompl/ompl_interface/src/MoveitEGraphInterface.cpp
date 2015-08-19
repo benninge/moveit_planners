@@ -303,10 +303,10 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
     moveit::core::robotStateMsgToRobotState(robot_nodes[i].robotstate, rstate);
 
     //DEBUG
-    if (i == 0) {
+    /*if (i == 0) {
     const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
     geometry_msgs::Pose pose = transformPose(end_effector_state);
-    ROS_ERROR("load DEBUG: node %p, pos xyz: %f, %f, %f", node, pose.position.x, pose.position.y, pose.position.z); }
+    ROS_ERROR("load DEBUG: node %p, pos xyz: %f, %f, %f", node, pose.position.x, pose.position.y, pose.position.z); } */
 
     ssPtr_->copyToOMPLState(node->state, rstate);
     node->id = i;
