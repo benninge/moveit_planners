@@ -126,6 +126,10 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
     p1.z = pose.position.z;
     marker.points.push_back(p1);
   }
+  si->freeState(nodes[0]->state);
+  si->freeState(nodes[1]->state);
+  delete nodes[0];
+  delete nodes[1];
 
 /*
   robot_state::RobotState rstate1(ssPtr_->getRobotModel());
