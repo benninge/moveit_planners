@@ -9,25 +9,21 @@
 #include <moveit/robot_state/conversions.h>
 #include <egraphmsg/RobotStateNode.h>
 
-ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr) :
+ompl_interface::MoveitEGraphInterface::MoveitEGraphInterface() :
     nh_("~"), id_(0)
 {
-
   //init Storage
   eGraph_storage_ = new ompl_interface::EGraphStorage();
-  ssPtr_ = ssPtr;
-  //robot_model_ = ssPtr_->getRobotModel();
   markerArray_pub_ = nh_.advertise<visualization_msgs::MarkerArray>("visualization_marker_array", 1000);
   resetEGraph();
 }
 
 ompl_interface::MoveitEGraphInterface::~MoveitEGraphInterface()
 {
-
+  delete eGraph_storage_;
 }
 
-void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes,
-                                                                    int color_scheme)
+void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si)
 {
 
   for (int i = 0; i < robot_nodes.size(); i++)
@@ -53,23 +49,29 @@ void ompl_interface::MoveitEGraphInterface::robotNodesToMarkerArray(std::vector<
       {
         if (robot_nodes[i].newly_generated || robot_nodes[robot_nodes[i].neighbors[j]].newly_generated)
         {
-          drawEdge(robot_nodes[i], robot_nodes[robot_nodes[i].neighbors[j]], 2);
+          drawEdge(robot_nodes[i], robot_nodes[robot_nodes[i].neighbors[j]], 2, si);
         }
         else
         {
-          drawEdge(robot_nodes[i], robot_nodes[robot_nodes[i].neighbors[j]], 3);
+          drawEdge(robot_nodes[i], robot_nodes[robot_nodes[i].neighbors[j]], 3, si);
         }
       }
       else
       {
-        drawEdge(robot_nodes[i], robot_nodes[robot_nodes[i].neighbors[j]], 1);
+        drawEdge(robot_nodes[i], robot_nodes[robot_nodes[i].neighbors[j]], 1, si);
       }
     }
   }
   publishMarkerArray(mA_);
 }
+
+void ompl_interface::MoveitEGraphInterface::setStateSpace(ModelBasedStateSpacePtr ssPtr)
+{
+  ssPtr_ = ssPtr;
+}
+
 void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2,
-                                                     int color_scheme)
+                                                     int color_scheme, const ompl::base::SpaceInformationPtr &si)
 {
   visualization_msgs::Marker marker;
   marker.header.frame_id = "/world";
@@ -104,11 +106,37 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
   geometry_msgs::Point p1;
   geometry_msgs::Point p2;
 
+  ompl::geometric::PathGeometric *path = new ompl::geometric::PathGeometric(si);
+  std::vector<egraphmsg::RobotStateNode> robot_nodes;
+  robot_nodes.push_back(node1);
+  robot_nodes.push_back(node2);
+  std::vector<ompl::geometric::EGraphNode*> nodes = robotStateNodesToOmplNodes(robot_nodes, si);
+  path->append(nodes[0]->state);
+  path->append(nodes[1]->state);
+  path->interpolate((unsigned int)path->length()* 25);
+
+  for (size_t i = 0; i < path->getStateCount(); i++) {
+    robot_state::RobotState rstate(ssPtr_->getRobotModel());
+    rstate.setToDefaultValues();
+    ssPtr_->copyToRobotState(rstate, path->getState(i));
+    const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
+    geometry_msgs::Pose pose = transformPose(end_effector_state);
+    p1.x = pose.position.x;
+    p1.y = pose.position.y;
+    p1.z = pose.position.z;
+    marker.points.push_back(p1);
+  }
+  si->freeState(nodes[0]->state);
+  si->freeState(nodes[1]->state);
+  delete nodes[0];
+  delete nodes[1];
+
+/*
   robot_state::RobotState rstate1(ssPtr_->getRobotModel());
   rstate1.setToDefaultValues();
   moveit::core::robotStateMsgToRobotState(node1.robotstate, rstate1);
 
-  const Eigen::Affine3d &end_effector_state1 = rstate1.getGlobalLinkTransform("lwr_joint7_frame");
+  const Eigen::Affine3d &end_effector_state1 = rstate1.getGlobalLinkTransform("lbr_7_link");
   geometry_msgs::Pose pose1 = transformPose(end_effector_state1);
   p1.x = pose1.position.x;
   p1.y = pose1.position.y;
@@ -117,13 +145,13 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
   robot_state::RobotState rstate2(ssPtr_->getRobotModel());
   rstate2.setToDefaultValues();
   moveit::core::robotStateMsgToRobotState(node2.robotstate, rstate2);
-  const Eigen::Affine3d &end_effector_state2 = rstate2.getGlobalLinkTransform("lwr_joint7_frame");
+  const Eigen::Affine3d &end_effector_state2 = rstate2.getGlobalLinkTransform("lbr_7_link");
   geometry_msgs::Pose pose2 = transformPose(end_effector_state2);
   p2.x = pose2.position.x;
   p2.y = pose2.position.y;
   p2.z = pose2.position.z;
   marker.points.push_back(p1);
-  marker.points.push_back(p2);
+  marker.points.push_back(p2); */
   mA_.markers.push_back(marker);
 }
 
@@ -132,9 +160,8 @@ void ompl_interface::MoveitEGraphInterface::robotNodeToMarkerArray(egraphmsg::Ro
   robot_state::RobotState rstate(ssPtr_->getRobotModel());
   rstate.setToDefaultValues();
   moveit::core::robotStateMsgToRobotState(node.robotstate, rstate);
-  //moveit::core::RobotStatePtr kinematic_state(new robot_state::RobotState(rstate));
 
-  const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lwr_joint7_frame");
+  const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
   geometry_msgs::Pose pose = transformPose(end_effector_state);
   if (color_scheme == 1)
   {
@@ -183,16 +210,17 @@ void ompl_interface::MoveitEGraphInterface::save(std::vector<ompl::geometric::EG
 {
   mutex.lock();
   std::vector<egraphmsg::RobotStateNode> robot_nodes = omplNodesToRobotStateNodes(eGraph);
+  //resetEGraph();
   bool b1 = addGraphToStorage(robot_nodes, "graph", "robot");
   ROS_WARN("graph add success?: " + b1 ? "true" : "false");
-  draw(robot_nodes);
+  resetMarkers();
+  draw(robot_nodes, si);
   mutex.unlock();
 }
 
-void ompl_interface::MoveitEGraphInterface::draw(std::vector<egraphmsg::RobotStateNode> robot_nodes)
+void ompl_interface::MoveitEGraphInterface::draw(std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si)
 {
-  resetMarkers();
-  robotNodesToMarkerArray(robot_nodes, 1);
+  robotNodesToMarkerArray(robot_nodes, si);
 }
 
 std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::load(
@@ -234,11 +262,14 @@ std::vector<egraphmsg::RobotStateNode> ompl_interface::MoveitEGraphInterface::om
     std::vector<ompl::geometric::EGraphNode*> nodes)
 {
   std::vector<egraphmsg::RobotStateNode> robot_nodes;
-  robot_state::RobotState rstate(ssPtr_->getRobotModel());
+  //robot_state::RobotState rstate(ssPtr_->getRobotModel());
   int32_t test;
   for (size_t i = 0; i < nodes.size(); i++)
   {
+    robot_state::RobotState rstate(ssPtr_->getRobotModel());
+    rstate.setToDefaultValues();
     ssPtr_->copyToRobotState(rstate, nodes[i]->state);
+
     egraphmsg::RobotStateNode rstate_node;
     moveit_msgs::RobotState rstatemsg;
     moveit::core::robotStateToRobotStateMsg(rstate, rstatemsg);
@@ -262,12 +293,21 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
 {
 
   std::vector<ompl::geometric::EGraphNode*> nodes;
-  robot_state::RobotState rstate(ssPtr_->getRobotModel());
   //traverse robot nodes
   for (size_t i = 0; i < robot_nodes.size(); i++)
   {
+    robot_state::RobotState rstate(ssPtr_->getRobotModel());
+    rstate.setToDefaultValues();
+
     ompl::geometric::EGraphNode *node = new ompl::geometric::EGraphNode(si);
     moveit::core::robotStateMsgToRobotState(robot_nodes[i].robotstate, rstate);
+
+    //DEBUG
+    if (i == 0) {
+    const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
+    geometry_msgs::Pose pose = transformPose(end_effector_state);
+    ROS_ERROR("load DEBUG: node %p, pos xyz: %f, %f, %f", node, pose.position.x, pose.position.y, pose.position.z); }
+
     ssPtr_->copyToOMPLState(node->state, rstate);
     node->id = i;
     node->saved = true;
