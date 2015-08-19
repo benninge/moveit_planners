@@ -23,9 +23,9 @@ namespace ompl_interface
 class MoveitEGraphInterface : public ompl::geometric::BaseEGraphInterface
 {
 public:
-  static MoveitEGraphInterface* getInstance(ModelBasedStateSpacePtr ssPtr)
+  static MoveitEGraphInterface* getInstance()
   {
-    static MoveitEGraphInterface instance(ssPtr);
+    static MoveitEGraphInterface instance;
     return &instance;
   }
 
@@ -42,12 +42,12 @@ public:
     //mutex.unlock();
   }
   virtual void resetMarkers();
+  virtual void setStateSpace(ModelBasedStateSpacePtr ssPtr);
 
   //MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
-
 private:
-  void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes);
-  MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
+  void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
+  MoveitEGraphInterface();
 
   MoveitEGraphInterface(MoveitEGraphInterface const&);
   void operator=(MoveitEGraphInterface const&);
@@ -57,9 +57,9 @@ private:
       std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
   bool addGraphToStorage(std::vector<egraphmsg::RobotStateNode> input_nodes, std::string name, std::string robot);
   std::vector<egraphmsg::RobotStateNode> getGraphFromStorage(std::string name, std::string robot);
-  void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme);
+  void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme, const ompl::base::SpaceInformationPtr &si);
 
-  void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes, int color_scheme);
+  void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
   void robotNodeToMarkerArray(egraphmsg::RobotStateNode node, int color_scheme);
   void nodeToMarkerArray(double x, double y, double z, float red, float green, float blue, float alpha);
   void publishMarkerArray(visualization_msgs::MarkerArray mA)
@@ -67,7 +67,6 @@ private:
     while (markerArray_pub_.getNumSubscribers() < 1)
     {
       ROS_WARN_ONCE("Please create a subscriber to visualization_marker_array");
-      sleep(0.01);
     }
     ROS_WARN_ONCE("Subscriber found");
     markerArray_pub_.publish(mA);
@@ -89,7 +88,6 @@ private:
   ModelBasedStateSpacePtr ssPtr_;
   boost::mutex mutex;
   boost::mutex resetMarkers_mutex;
-  //robot_model::RobotModelConstPtr robot_model_;
 };
 
 }
