@@ -82,7 +82,14 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
                                                      int color_scheme, const ompl::base::SpaceInformationPtr &si)
 {
   visualization_msgs::Marker marker;
-  marker.header.frame_id = "/world";
+  if (ssPtr_->getRobotModel()->getName() == "pr2")
+  {
+    marker.header.frame_id = "/odom_combined";
+  }
+  else
+  {
+    marker.header.frame_id = "/world";
+  }
   marker.type = visualization_msgs::Marker::LINE_STRIP;
   marker.action = visualization_msgs::Marker::ADD;
   marker.ns = "basic_shapes";
@@ -136,8 +143,18 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
     robot_state::RobotState rstate(ssPtr_->getRobotModel());
     rstate.setToDefaultValues();
     ssPtr_->copyToRobotState(rstate, path->getState(i));
-    const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
-    geometry_msgs::Pose pose = transformPose(end_effector_state);
+
+    geometry_msgs::Pose pose;
+    if (ssPtr_->getRobotModel()->getName() == "pr2")
+    {
+      const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("r_wrist_roll_link");
+      pose = transformPose(end_effector_state);
+    }
+    else
+    {
+      const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
+      pose = transformPose(end_effector_state);
+    }
     p1.x = pose.position.x;
     p1.y = pose.position.y;
     p1.z = pose.position.z;
@@ -178,8 +195,18 @@ void ompl_interface::MoveitEGraphInterface::robotNodeToMarkerArray(egraphmsg::Ro
   rstate.setToDefaultValues();
   moveit::core::robotStateMsgToRobotState(node.robotstate, rstate);
 
-  const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
-  geometry_msgs::Pose pose = transformPose(end_effector_state);
+  geometry_msgs::Pose pose;
+  if (ssPtr_->getRobotModel()->getName() == "pr2")
+  {
+    const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("r_wrist_roll_link");
+    pose = transformPose(end_effector_state);
+  }
+  else
+  {
+    const Eigen::Affine3d &end_effector_state = rstate.getGlobalLinkTransform("lbr_7_link");
+    pose = transformPose(end_effector_state);
+  }
+
   if (color_scheme == 1)
   {
     nodeToMarkerArray(pose.position.x, pose.position.y, pose.position.z, 0.0f, 0.0f, 1.0f, 1.0f);
@@ -199,7 +226,14 @@ void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x, double y
                                                               float blue, float alpha)
 {
   visualization_msgs::Marker marker;
-  marker.header.frame_id = "/world";
+  if (ssPtr_->getRobotModel()->getName() == "pr2")
+  {
+    marker.header.frame_id = "/odom_combined";
+  }
+  else
+  {
+    marker.header.frame_id = "/world";
+  }
   marker.type = visualization_msgs::Marker::SPHERE;
   marker.ns = "basic_shapes";
   marker.id = id_++;
@@ -228,11 +262,12 @@ void ompl_interface::MoveitEGraphInterface::save(std::vector<ompl::geometric::EG
   mutex.lock();
   std::vector<egraphmsg::RobotStateNode> robot_nodes = omplNodesToRobotStateNodes(eGraph);
   //resetEGraph();
-  bool b1 = addGraphToStorage(robot_nodes, "graph", "robot");
+  bool b1 = addGraphToStorage(robot_nodes, "graph", ssPtr_->getRobotModel()->getName());
   ROS_WARN("graph add success?: " + b1 ? "true" : "false");
   resetMarkers();
   draw(robot_nodes, si);
   mutex.unlock();
+
 }
 
 void ompl_interface::MoveitEGraphInterface::draw(std::vector<egraphmsg::RobotStateNode> robot_nodes,
@@ -246,10 +281,11 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
 {
   mutex.lock();
   std::vector<ompl::geometric::EGraphNode*> eGraph;
-  if (eGraph_storage_->hasEGraph("graph", "robot") == true)
+  if (eGraph_storage_->hasEGraph("graph", ssPtr_->getRobotModel()->getName()) == true)
   {
     ROS_INFO("loading");
-    std::vector<egraphmsg::RobotStateNode> robot_nodes = getGraphFromStorage("graph", "robot");
+    std::vector<egraphmsg::RobotStateNode> robot_nodes = getGraphFromStorage("graph",
+                                                                             ssPtr_->getRobotModel()->getName());
     eGraph = robotStateNodesToOmplNodes(robot_nodes, si);
   }
   else
