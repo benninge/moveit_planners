@@ -258,8 +258,8 @@ void ompl_interface::ModelBasedPlanningContext::setPlanningVolume(const moveit_m
 
 void ompl_interface::ModelBasedPlanningContext::simplifySolution(double timeout)
 {
-  //ompl_simple_setup_->simplifySolution(timeout);
-  //last_simplify_time_ = ompl_simple_setup_->getLastSimplificationTime();
+  ompl_simple_setup_->simplifySolution(timeout);
+  last_simplify_time_ = ompl_simple_setup_->getLastSimplificationTime();
 }
 
 void ompl_interface::ModelBasedPlanningContext::interpolateSolution()

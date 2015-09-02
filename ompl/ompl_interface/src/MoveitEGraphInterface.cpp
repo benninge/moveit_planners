@@ -264,8 +264,8 @@ void ompl_interface::MoveitEGraphInterface::save(std::vector<ompl::geometric::EG
   //resetEGraph();
   bool b1 = addGraphToStorage(robot_nodes, "graph", ssPtr_->getRobotModel()->getName());
   ROS_WARN("graph add success?: " + b1 ? "true" : "false");
-  resetMarkers();
-  draw(robot_nodes, si);
+  //resetMarkers();
+  //draw(robot_nodes, si);
   mutex.unlock();
 
 }
