@@ -81,7 +81,6 @@ private:
   EGraphStorage* eGraph_storage_;
 
   ros::NodeHandle nh_;
-  //TODO: change to improve threaded behaviour?
   visualization_msgs::MarkerArray mA_;
   ros::Publisher markerArray_pub_;
   int id_;
