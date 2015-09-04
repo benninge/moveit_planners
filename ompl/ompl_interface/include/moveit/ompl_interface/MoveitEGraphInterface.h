@@ -31,9 +31,13 @@ public:
 
   virtual ~MoveitEGraphInterface();
 
+  /** \brief Load eGraph from database */
   virtual std::vector<ompl::geometric::EGraphNode*> load(const ompl::base::SpaceInformationPtr &si);
 
+  /** \brief Save eGraph to database */
   virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph, const ompl::base::SpaceInformationPtr &si);
+
+  /** \brief Clear eGraph */
   virtual void resetEGraph()
   {
     //mutex.lock();
@@ -41,27 +45,40 @@ public:
     eGraph_storage_->reset();
     //mutex.unlock();
   }
+
+  /** \brief remove all Markers */
   virtual void resetMarkers();
+
   virtual void setStateSpace(ModelBasedStateSpacePtr ssPtr);
 
-  //MoveitEGraphInterface(ModelBasedStateSpacePtr ssPtr);
 private:
+  /** \brief draw current eGraph using markers */
   void draw(std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
-  MoveitEGraphInterface();
 
+  MoveitEGraphInterface();
   MoveitEGraphInterface(MoveitEGraphInterface const&);
   void operator=(MoveitEGraphInterface const&);
 
+  /** \brief converts eGraphNodes to RobotStates */
   std::vector<egraphmsg::RobotStateNode> omplNodesToRobotStateNodes(std::vector<ompl::geometric::EGraphNode*> nodes);
+
+  /** \brief converts RobotStates to eGraphNodes */
   std::vector<ompl::geometric::EGraphNode*> robotStateNodesToOmplNodes(
       std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
+
+  /** \brief save eGraph in database */
   bool addGraphToStorage(std::vector<egraphmsg::RobotStateNode> input_nodes, std::string name, std::string robot);
+
+  /** \brief load eGraph from database */
   std::vector<egraphmsg::RobotStateNode> getGraphFromStorage(std::string name, std::string robot);
+
+
   void drawEdge(egraphmsg::RobotStateNode node1, egraphmsg::RobotStateNode node2, int color_scheme, const ompl::base::SpaceInformationPtr &si);
 
   void robotNodesToMarkerArray(std::vector<egraphmsg::RobotStateNode> robot_nodes, const ompl::base::SpaceInformationPtr &si);
   void robotNodeToMarkerArray(egraphmsg::RobotStateNode node, int color_scheme);
   void nodeToMarkerArray(double x, double y, double z, float red, float green, float blue, float alpha);
+
   void publishMarkerArray(visualization_msgs::MarkerArray mA)
   {
     while (markerArray_pub_.getNumSubscribers() < 1)
@@ -71,6 +88,7 @@ private:
     ROS_WARN_ONCE("Subscriber found");
     markerArray_pub_.publish(mA);
   }
+
   geometry_msgs::Pose transformPose(const Eigen::Affine3d end_effector_state)
   {
     geometry_msgs::Pose pose;
@@ -78,12 +96,16 @@ private:
     return pose;
   }
 
+  /** \brief pointer to database */
   EGraphStorage* eGraph_storage_;
 
   ros::NodeHandle nh_;
   visualization_msgs::MarkerArray mA_;
   ros::Publisher markerArray_pub_;
+
+  /** \brief id used to uniquely identify eGraphNodes */
   int id_;
+
   ModelBasedStateSpacePtr ssPtr_;
   boost::mutex mutex;
   boost::mutex resetMarkers_mutex;
