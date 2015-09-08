@@ -237,14 +237,20 @@ void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x, double y
 void ompl_interface::MoveitEGraphInterface::save(std::vector<ompl::geometric::EGraphNode*> eGraph,
                                                  const ompl::base::SpaceInformationPtr &si)
 {
+  ROS_ERROR("save debug 1");
   mutex.lock();
+  ROS_ERROR("save debug 2");
   std::vector<egraphmsg::RobotStateNode> robot_nodes = omplNodesToRobotStateNodes(eGraph);
+  ROS_ERROR("save debug 3");
   //resetEGraph();
   bool b1 = addGraphToStorage(robot_nodes, "graph", ssPtr_->getRobotModel()->getName());
+  ROS_ERROR("save debug 4");
   ROS_WARN("graph add success?: " + b1 ? "true" : "false");
+  ROS_ERROR("save debug 5");
   //resetMarkers();
   //draw(robot_nodes, si);
   mutex.unlock();
+  ROS_ERROR("save debug 6");
 
 }
 
@@ -272,7 +278,6 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
   }
   mutex.unlock();
   return eGraph;
-
 }
 
 void ompl_interface::MoveitEGraphInterface::resetMarkers()
