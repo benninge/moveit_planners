@@ -164,28 +164,6 @@ void ompl_interface::MoveitEGraphInterface::drawEdge(egraphmsg::RobotStateNode n
   si->freeState(nodes[1]->state);
   delete nodes[0];
   delete nodes[1];
-
-  /*
-   robot_state::RobotState rstate1(ssPtr_->getRobotModel());
-   rstate1.setToDefaultValues();
-   moveit::core::robotStateMsgToRobotState(node1.robotstate, rstate1);
-
-   const Eigen::Affine3d &end_effector_state1 = rstate1.getGlobalLinkTransform("lbr_7_link");
-   geometry_msgs::Pose pose1 = transformPose(end_effector_state1);
-   p1.x = pose1.position.x;
-   p1.y = pose1.position.y;
-   p1.z = pose1.position.z;
-
-   robot_state::RobotState rstate2(ssPtr_->getRobotModel());
-   rstate2.setToDefaultValues();
-   moveit::core::robotStateMsgToRobotState(node2.robotstate, rstate2);
-   const Eigen::Affine3d &end_effector_state2 = rstate2.getGlobalLinkTransform("lbr_7_link");
-   geometry_msgs::Pose pose2 = transformPose(end_effector_state2);
-   p2.x = pose2.position.x;
-   p2.y = pose2.position.y;
-   p2.z = pose2.position.z;
-   marker.points.push_back(p1);
-   marker.points.push_back(p2); */
   mA_.markers.push_back(marker);
 }
 
@@ -294,7 +272,6 @@ std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface:
   }
   mutex.unlock();
   return eGraph;
-
 }
 
 void ompl_interface::MoveitEGraphInterface::resetMarkers()
