@@ -235,12 +235,12 @@ void ompl_interface::MoveitEGraphInterface::nodeToMarkerArray(double x, double y
 }
 
 void ompl_interface::MoveitEGraphInterface::save(std::vector<ompl::geometric::EGraphNode*> eGraph,
-                                                 const ompl::base::SpaceInformationPtr &si)
+                                                 const ompl::base::SpaceInformationPtr &si, std::string graphName)
 {
   mutex.lock();
   std::vector<egraphmsg::RobotStateNode> robot_nodes = omplNodesToRobotStateNodes(eGraph);
   //resetEGraph();
-  bool b1 = addGraphToStorage(robot_nodes, "graph", ssPtr_->getRobotModel()->getName());
+  bool b1 = addGraphToStorage(robot_nodes, graphName, ssPtr_->getRobotModel()->getName());
   ROS_WARN("graph add success?: " + b1 ? "true" : "false");
   //resetMarkers();
   //draw(robot_nodes, si);
@@ -255,14 +255,14 @@ void ompl_interface::MoveitEGraphInterface::draw(std::vector<egraphmsg::RobotSta
 }
 
 std::vector<ompl::geometric::EGraphNode*> ompl_interface::MoveitEGraphInterface::load(
-    const ompl::base::SpaceInformationPtr &si)
+    const ompl::base::SpaceInformationPtr &si, std::string graphName)
 {
   mutex.lock();
   std::vector<ompl::geometric::EGraphNode*> eGraph;
-  if (eGraph_storage_->hasEGraph("graph", ssPtr_->getRobotModel()->getName()) == true)
+  if (eGraph_storage_->hasEGraph(graphName, ssPtr_->getRobotModel()->getName()) == true)
   {
     ROS_INFO("loading");
-    std::vector<egraphmsg::RobotStateNode> robot_nodes = getGraphFromStorage("graph",
+    std::vector<egraphmsg::RobotStateNode> robot_nodes = getGraphFromStorage(graphName,
                                                                              ssPtr_->getRobotModel()->getName());
     eGraph = robotStateNodesToOmplNodes(robot_nodes, si);
   }
