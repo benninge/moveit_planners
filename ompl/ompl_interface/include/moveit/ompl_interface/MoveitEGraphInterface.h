@@ -32,10 +32,10 @@ public:
   virtual ~MoveitEGraphInterface();
 
   /** \brief Load eGraph from database */
-  virtual std::vector<ompl::geometric::EGraphNode*> load(const ompl::base::SpaceInformationPtr &si);
+  virtual std::vector<ompl::geometric::EGraphNode*> load(const ompl::base::SpaceInformationPtr &si, std::string graphName);
 
   /** \brief Save eGraph to database */
-  virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph, const ompl::base::SpaceInformationPtr &si);
+  virtual void save(std::vector<ompl::geometric::EGraphNode*> eGraph, const ompl::base::SpaceInformationPtr &si, std::string graphName);
 
   /** \brief Clear eGraph */
   virtual void resetEGraph()
